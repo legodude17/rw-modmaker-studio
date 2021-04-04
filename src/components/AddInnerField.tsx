@@ -26,7 +26,7 @@ export default function AddInnerField({
         <SingleFieldInput
           typePath={typePath}
           typeInfo={typeInfo}
-          path={[]}
+          path={[!!text]}
           field={makeField({ value: text })}
         />
       </DispatchContext.Provider>

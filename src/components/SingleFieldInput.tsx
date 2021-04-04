@@ -137,9 +137,12 @@ function SingleFieldInput({
   if (typeInfo?.specialType?.defName) {
     const defType = fullType(typeInfo.specialType.defName) ?? 'Verse.Def';
     const opts = allDefsOfType(defType)
+      .filter((def) => !def.abstract)
       .map((def) => def.defName)
       .concat(
-        defs.filter((def) => def.type === defType).map((def) => def.defName)
+        defs
+          .filter((def) => def.type === defType && !def.abstract)
+          .map((def) => def.defName)
       );
     return (
       <SimpleAutocomplete

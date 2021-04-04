@@ -14,7 +14,7 @@ function SimpleAutocomplete({
 }) {
   const dispatch = useContext(DispatchContext);
   const [text, setText] = useState(value);
-  useEffect(() => setText(value), [path]);
+  useEffect(() => setText(value), [path.join('.')]);
   useEffect(() => {
     dispatch({
       type: 'set',
@@ -22,6 +22,7 @@ function SimpleAutocomplete({
       newValue: text,
     });
   }, [text]);
+
   return (
     <Autocomplete
       options={options}
@@ -41,10 +42,17 @@ function SimpleAutocomplete({
       filterOptions={(opts, state) =>
         state.inputValue === value
           ? opts
-          : opts.filter((opt) => opt.includes(state.inputValue))
+          : opts.filter((opt) =>
+              opt.toLowerCase().includes(state.inputValue.toLowerCase())
+            )
       }
     />
   );
 }
 
-export default memo(SimpleAutocomplete);
+export default memo(
+  SimpleAutocomplete,
+  (prevState, nextState) =>
+    prevState.options.join('-') === nextState.options.join('-') &&
+    prevState.path.join('.') === nextState.path.join('.')
+);

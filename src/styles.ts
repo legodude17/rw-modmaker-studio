@@ -60,5 +60,6 @@ export default () =>
       left: '50%',
       minWidth: 500,
       minHeight: 300,
+      transform: 'translate(-50%, -50%)',
     },
   }));

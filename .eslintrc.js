@@ -6,6 +6,7 @@ module.exports = {
     'no-return-assign': 'off',
     'no-cond-assign': 'off',
     'react/react-in-jsx-scope': 'off',
+    'react/no-array-index-key': 'off',
   },
   parserOptions: {
     ecmaVersion: 2020,

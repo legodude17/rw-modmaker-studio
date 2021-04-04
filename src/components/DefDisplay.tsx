@@ -71,6 +71,5 @@ export default memo(
   DefDisplay,
   (prevState, nextState) =>
     prevState.defIndex === nextState.defIndex &&
-    getId(prevState.def) === getId(nextState.def) &&
-    prevState.def.fields.size === nextState.def.fields.size
+    prevState.def.equals(nextState.def)
 );

@@ -91,8 +91,8 @@ function DefFieldDisplay({
         >
           {list.map((innerField, index) => (
             <div
-              style={{ width: '90%', display: 'flex', flexDirection: 'row' }}
-              key={innerField.key}
+              style={{ width: '100%', display: 'flex', flexDirection: 'row' }}
+              key={index}
             >
               <SingleFieldInput
                 field={innerField}
@@ -100,6 +100,18 @@ function DefFieldDisplay({
                 typeInfo={innerTypeInfo}
                 typePath={`${typePath}!${innerField.key}`}
               />
+              <IconButton
+                onClick={() =>
+                  dispatch({
+                    path: path.concat(['value']),
+                    type: 'remove',
+                    newValue: innerField,
+                  })
+                }
+                style={{ marginLeft: 20, marginRight: 20 }}
+              >
+                <Remove />
+              </IconButton>
             </div>
           ))}
         </FieldDisplay>
@@ -124,5 +136,11 @@ function DefFieldDisplay({
   return null;
 }
 
-export default memo(DefFieldDisplay);
+export default memo(
+  DefFieldDisplay,
+  (prevState, nextState) =>
+    prevState.path.join('.') === nextState.path.join('.') &&
+    prevState.typePath === nextState.typePath &&
+    prevState.field.equals(nextState.field)
+);
 // export default DefFieldDisplay;
