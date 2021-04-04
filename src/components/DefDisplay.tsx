@@ -1,4 +1,4 @@
-import React from 'react';
+import { useContext, memo } from 'react';
 import {
   IconButton,
   List as ListElement,
@@ -16,7 +16,7 @@ import { DispatchContext } from '../misc';
 import { isSingleInput } from './SingleFieldInput';
 
 function DefDisplay({ def, defIndex }: { def: Def; defIndex: number }) {
-  const dispatch = React.useContext(DispatchContext);
+  const dispatch = useContext(DispatchContext);
   if (!def) return null;
   const defTypeInfo = typeByName(def.type);
   let temp;
@@ -67,7 +67,7 @@ function DefDisplay({ def, defIndex }: { def: Def; defIndex: number }) {
   );
 }
 
-export default React.memo(
+export default memo(
   DefDisplay,
   (prevState, nextState) =>
     prevState.defIndex === nextState.defIndex &&

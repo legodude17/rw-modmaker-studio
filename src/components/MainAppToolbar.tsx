@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link as RouterLink, useHistory } from 'react-router-dom';
 import { IconButton, Typography, AppBar, Toolbar } from '@material-ui/core';
 import { ClassNameMap } from '@material-ui/styles';

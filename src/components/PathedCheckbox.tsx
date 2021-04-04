@@ -1,5 +1,5 @@
 import { List } from 'immutable';
-import React from 'react';
+import { useState, useContext, memo } from 'react';
 import { Checkbox } from '@material-ui/core';
 import { DispatchContext } from '../misc';
 
@@ -10,8 +10,8 @@ function PathedCheckbox({
   path: string[];
   startingValue: boolean;
 }) {
-  const [checked, setChecked] = React.useState(startingValue);
-  const dispatch = React.useContext(DispatchContext);
+  const [checked, setChecked] = useState(startingValue);
+  const dispatch = useContext(DispatchContext);
   return (
     <Checkbox
       checked={checked}
@@ -28,6 +28,6 @@ function PathedCheckbox({
   );
 }
 
-export default React.memo(PathedCheckbox, (prevState, nextState) =>
+export default memo(PathedCheckbox, (prevState, nextState) =>
   List(prevState.path).equals(List(nextState.path))
 );

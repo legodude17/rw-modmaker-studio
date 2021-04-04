@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { IconButton } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import * as Data from '../DataManager';

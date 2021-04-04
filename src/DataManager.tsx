@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron';
 import { promises as fs } from 'fs';
-import React from 'react';
+import * as React from 'react';
 import settings from 'electron-settings';
 import { List, Seq } from 'immutable';
 import path from 'path';

@@ -56,3 +56,4 @@ package.json
 *.scss.d.ts
 
 .erb
+src/parser

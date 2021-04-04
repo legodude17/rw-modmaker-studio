@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, memo } from 'react';
 import {
   ListItem,
   ListItemText,
@@ -19,7 +19,7 @@ function DefTypeList({
   setCurrent: (arg: string) => void;
   update: () => void;
 }) {
-  const [collapsed, setCollased] = React.useState(false);
+  const [collapsed, setCollased] = useState(false);
   const theme = useTheme();
   return (
     <>
@@ -69,7 +69,7 @@ function DefTypeList({
   );
 }
 
-export default React.memo(
+export default memo(
   DefTypeList,
   (prevState, nextState) =>
     prevState.type === nextState.type &&

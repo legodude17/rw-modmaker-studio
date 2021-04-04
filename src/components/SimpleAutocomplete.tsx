@@ -1,4 +1,4 @@
-import React from 'react';
+import { useContext, useState, useEffect, memo } from 'react';
 import { TextField, TextFieldProps } from '@material-ui/core';
 import { Autocomplete } from '@material-ui/lab';
 import { DispatchContext } from '../misc';
@@ -12,10 +12,10 @@ function SimpleAutocomplete({
   path: string[];
   value: string;
 }) {
-  const dispatch = React.useContext(DispatchContext);
-  const [text, setText] = React.useState(value);
-  React.useEffect(() => setText(value), [path]);
-  React.useEffect(() => {
+  const dispatch = useContext(DispatchContext);
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [path]);
+  useEffect(() => {
     dispatch({
       type: 'set',
       path,
@@ -47,4 +47,4 @@ function SimpleAutocomplete({
   );
 }
 
-export default React.memo(SimpleAutocomplete);
+export default memo(SimpleAutocomplete);

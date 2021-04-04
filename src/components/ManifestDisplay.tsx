@@ -1,4 +1,4 @@
-import React from 'react';
+import { useContext } from 'react';
 import {
   IconButton,
   List as ListElement,
@@ -24,7 +24,7 @@ export default function ManifestDisplay({
 }: {
   manifest: ModManifest;
 }) {
-  const dispatch = React.useContext(DispatchContext);
+  const dispatch = useContext(DispatchContext);
   return (
     <Paper elevation={2}>
       <ListElement>

@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState, useContext } from 'react';
 import { IconButton, TextField, TextFieldProps } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import { Autocomplete } from '@material-ui/lab';
@@ -12,8 +12,8 @@ export default function AddMod({
   add: (mod: string) => void;
   prop: keyof ModInfo;
 }) {
-  const [addMod, setAddMod] = React.useState('');
-  const data = React.useContext(Data.DataContext);
+  const [addMod, setAddMod] = useState('');
+  const data = useContext(Data.DataContext);
   return (
     <>
       <Autocomplete

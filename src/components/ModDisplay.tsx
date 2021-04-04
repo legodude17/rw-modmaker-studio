@@ -1,4 +1,4 @@
-import React from 'react';
+import { useContext, useState, useRef } from 'react';
 import {
   IconButton,
   Paper,
@@ -13,16 +13,14 @@ import * as Data from '../DataManager';
 import { DispatchContext } from '../misc';
 
 export default ({ path, value }: { path: string[]; value: Mod }) => {
-  const data = React.useContext(Data.DataContext);
-  const dispatch = React.useContext(DispatchContext);
-  const [chosenMod, setChosenMod] = React.useState<null | string>(
-    value.name ?? null
-  );
+  const data = useContext(Data.DataContext);
+  const dispatch = useContext(DispatchContext);
+  const [chosenMod, setChosenMod] = useState<null | string>(value.name ?? null);
   const refs = [
-    React.useRef<HTMLInputElement | null>(null),
-    React.useRef<HTMLInputElement | null>(null),
-    React.useRef<HTMLInputElement | null>(null),
-    React.useRef<HTMLInputElement | null>(null),
+    useRef<HTMLInputElement | null>(null),
+    useRef<HTMLInputElement | null>(null),
+    useRef<HTMLInputElement | null>(null),
+    useRef<HTMLInputElement | null>(null),
   ];
   return (
     <Paper

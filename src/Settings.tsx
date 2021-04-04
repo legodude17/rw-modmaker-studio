@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import settings from 'electron-settings';
 import { Container, TextField } from '@material-ui/core';
 import clsx from 'clsx';

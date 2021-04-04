@@ -1,4 +1,4 @@
-import React from 'react';
+import { createContext, useContext, memo } from 'react';
 import { List } from 'immutable';
 import { IMaskInput } from 'react-imask';
 import { Def, Field } from '../Project';
@@ -15,7 +15,7 @@ import {
 } from '../DataManager';
 import SimpleAutocomplete from './SimpleAutocomplete';
 
-export const DefsContext = React.createContext([] as Def[]);
+export const DefsContext = createContext([] as Def[]);
 
 function SingleFieldInput({
   field,
@@ -30,9 +30,9 @@ function SingleFieldInput({
   type?: 'value' | 'key';
   typePath: string;
 }) {
-  const dispatch = React.useContext(DispatchContext);
-  const data = React.useContext(DataContext);
-  const defs = React.useContext(DefsContext);
+  const dispatch = useContext(DispatchContext);
+  const data = useContext(DataContext);
+  const defs = useContext(DefsContext);
   if (typeof field.get(type) !== 'string') return null;
   if (typeInfo?.specialType?.string) {
     return (
@@ -178,7 +178,7 @@ export const isSingleInput = (typeInfo: TypeInfo) =>
   typeInfo?.specialType?.defName ||
   typeInfo?.typeIdentifier === 'Verse.Rot4';
 
-const Memoized = React.memo(
+const Memoized = memo(
   SingleFieldInput,
   (prevState, nextState) =>
     List(prevState.path).equals(List(nextState.path)) &&

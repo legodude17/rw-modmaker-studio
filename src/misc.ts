@@ -1,4 +1,4 @@
-import React from 'react';
+import { createContext } from 'react';
 import { Project, ProjectAction } from './Project';
 
 export enum SidebarTab {
@@ -6,6 +6,6 @@ export enum SidebarTab {
   Search,
 }
 
-export const DispatchContext = React.createContext<
-  React.Dispatch<ProjectAction>
->((action: ProjectAction) => action.newValue as Project);
+export const DispatchContext = createContext<React.Dispatch<ProjectAction>>(
+  (action: ProjectAction) => action.newValue as Project
+);

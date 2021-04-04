@@ -1,4 +1,4 @@
-import React from 'react';
+import { useContext, memo } from 'react';
 import { List } from 'immutable';
 import { IconButton } from '@material-ui/core';
 import { Remove } from '@material-ui/icons';
@@ -19,7 +19,7 @@ function DefFieldDisplay({
   typePath: string;
 }) {
   const typeInfo = Data.typeByName(field.type);
-  const dispatch = React.useContext(DispatchContext);
+  const dispatch = useContext(DispatchContext);
   if (typeInfo === undefined) return null;
   if (isSingleInput(typeInfo))
     return (
@@ -124,5 +124,5 @@ function DefFieldDisplay({
   return null;
 }
 
-export default React.memo(DefFieldDisplay);
+export default memo(DefFieldDisplay);
 // export default DefFieldDisplay;
