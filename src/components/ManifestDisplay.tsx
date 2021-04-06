@@ -12,8 +12,7 @@ import {
 import { List } from 'immutable';
 import CloseIcon from '@material-ui/icons/Close';
 import { LoadType, makeMod, ModManifest, ModManifestProps } from '../Project';
-import * as Data from '../DataManager';
-import { DispatchContext } from '../misc';
+import { DataContext, DispatchContext } from '../util';
 import FieldDisplay from './FieldDisplay';
 import AddMod from './AddMod';
 import ModDisplay from './ModDisplay';
@@ -25,6 +24,7 @@ export default function ManifestDisplay({
   manifest: ModManifest;
 }) {
   const dispatch = useContext(DispatchContext);
+  const Data = useContext(DataContext);
   return (
     <Paper elevation={2}>
       <ListElement>
@@ -46,7 +46,7 @@ export default function ManifestDisplay({
             actions={
               <AddMod
                 add={(modName) => {
-                  const mod = Data.modByName(modName);
+                  const mod = Data?.modByName(modName);
                   dispatch({
                     type: 'add',
                     path: ['manifest', 'deps'],

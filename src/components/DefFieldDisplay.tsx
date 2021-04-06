@@ -5,8 +5,7 @@ import { Remove } from '@material-ui/icons';
 import { Field, makeField } from '../Project';
 import FieldDisplay from './FieldDisplay';
 import SingleFieldInput, { isSingleInput } from './SingleFieldInput';
-import * as Data from '../DataManager';
-import { DispatchContext } from '../misc';
+import { DataContext, DispatchContext } from '../util';
 import AddInnerField from './AddInnerField';
 
 function DefFieldDisplay({
@@ -18,8 +17,10 @@ function DefFieldDisplay({
   field: Field;
   typePath: string;
 }) {
-  const typeInfo = Data.typeByName(field.type);
+  const Data = useContext(DataContext);
   const dispatch = useContext(DispatchContext);
+  if (!Data) return null;
+  const typeInfo = Data.typeByName(field.type);
   if (typeInfo === undefined) return null;
   if (isSingleInput(typeInfo))
     return (

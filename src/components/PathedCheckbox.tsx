@@ -1,7 +1,7 @@
 import { List } from 'immutable';
 import { useState, useContext, memo } from 'react';
 import { Checkbox } from '@material-ui/core';
-import { DispatchContext } from '../misc';
+import { DispatchContext } from '../util';
 
 function PathedCheckbox({
   path,

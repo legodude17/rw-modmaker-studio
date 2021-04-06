@@ -2,8 +2,8 @@ import { useState, useContext } from 'react';
 import { IconButton, TextField, TextFieldProps } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
 import { Autocomplete } from '@material-ui/lab';
-import * as Data from '../DataManager';
 import { ModInfo } from '../completionItem';
+import { DataContext } from '../util';
 
 export default function AddMod({
   add,
@@ -13,12 +13,12 @@ export default function AddMod({
   prop: keyof ModInfo;
 }) {
   const [addMod, setAddMod] = useState('');
-  const data = useContext(Data.DataContext);
+  const Data = useContext(DataContext);
   return (
     <>
       <Autocomplete
         id="add-mod-autocomplete"
-        options={data.mods.map((mod) => mod[prop])}
+        options={Data?.data.mods.map((mod) => mod[prop]) ?? []}
         getOptionLabel={(a) => a ?? ''}
         renderInput={(params: TextFieldProps) => (
           <TextField

@@ -9,7 +9,7 @@ import {
 import { ClassNameMap } from '@material-ui/styles';
 import CodeIcon from '@material-ui/icons/Code';
 import SearchIcon from '@material-ui/icons/Search';
-import { SidebarTab } from '../misc';
+import { SidebarTab } from '../util';
 
 function TabButton({ tab }: { tab: SidebarTab }) {
   switch (tab) {

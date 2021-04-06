@@ -1,7 +1,7 @@
-import { List, Map, Seq } from 'immutable';
+import { List, Map } from 'immutable';
 import xml, { XmlObject } from 'xml';
 import { promises as fs } from 'fs';
-import path from 'path';
+import path, { join } from 'path';
 import { parse, Node } from './parser/XMLParser';
 import {
   Def,
@@ -18,9 +18,17 @@ import {
   Project,
   ProjectProps,
 } from './Project';
-import * as Data from './DataManager';
 import { allFilesRecusive, getModPaths } from './util';
-import { TypeInfo } from './completionItem';
+import {
+  createManager,
+  getDefFolders,
+  fullType,
+  getAllAssemblies,
+  getModFolders,
+  getDefFiles,
+} from './DataManager';
+import { DataManager, AllData } from './DataManagerType';
+import { DefInfo, ModInfo, TypeInfo } from './completionItem';
 
 export function stringifyManifest(manifest: ModManifest): string {
   return xml(
@@ -66,7 +74,7 @@ export function stringifyManifest(manifest: ModManifest): string {
   );
 }
 
-export function readManifest(text: string): ModManifest {
+export function readManifest(text: string, Data: DataManager): ModManifest {
   const manifest: Partial<ModManifestProps> = { loadRules: Map() };
   const doc = parse(text);
   doc.children[0].children.forEach((node) => {
@@ -175,9 +183,12 @@ export function stringifyDefs(defs: Def[]): string {
   );
 }
 
-const failedTypes: Set<string> = new Set();
-
-function readField(node: Node, parentTypeName?: string): Field {
+function readField(
+  node: Node,
+  Data: DataManager,
+  failedTypes?: Set<string>,
+  parentTypeName?: string
+): Field {
   let type = '';
   if (parentTypeName && node.tag?.content) {
     const parentType = Data.typeByName(parentTypeName);
@@ -197,7 +208,7 @@ function readField(node: Node, parentTypeName?: string): Field {
     const key = node.tag?.content;
     const value =
       type === 'System.Type'
-        ? Data.fullType(node.text.content)
+        ? fullType(node.text.content, failedTypes, Data)
         : node.text.content;
     return makeField({
       key,
@@ -208,19 +219,25 @@ function readField(node: Node, parentTypeName?: string): Field {
   }
   return makeField({
     key: node.tag?.content ?? '',
-    value: List(node.children.map((n) => readField(n, type))),
+    value: List(
+      node.children.map((n) => readField(n, Data, failedTypes, type))
+    ),
     attrs: node.attributes,
     type,
   });
 }
 
-export function readDefs(text: string): List<Def> {
+export function readDefs(
+  text: string,
+  Data: DataManager,
+  failedTypes?: Set<string>
+): List<Def> {
   const doc = parse(text);
 
   return List(
     doc.children[0].children.map((node) =>
       makeDef({
-        type: Data.fullType(node.tag?.content ?? 'Def'),
+        type: fullType(node.tag?.content ?? 'Def', failedTypes, Data),
         name: node.attributes?.Name ?? undefined,
         defName:
           node.children.find((val) => val.tag?.content === 'defName')?.text
@@ -229,7 +246,12 @@ export function readDefs(text: string): List<Def> {
         abstract: node.attributes?.Abstract === 'True',
         fields: List(
           node.children.map((n) =>
-            readField(n, Data.fullType(node.tag?.content ?? 'Def'))
+            readField(
+              n,
+              Data,
+              failedTypes,
+              fullType(node.tag?.content ?? 'Def', failedTypes, Data)
+            )
           )
         ),
       })
@@ -237,30 +259,71 @@ export function readDefs(text: string): List<Def> {
   );
 }
 
-export async function readProject(folder: string): Promise<Project> {
+export async function readProject(
+  folder: string,
+  regenerate: {
+    typeInfo: (assems: string[], extraTypes: string[]) => Promise<TypeInfo[]>;
+    defInfo: (
+      defFolders: string[],
+      Data?: DataManager,
+      failedTypes?: Set<string>
+    ) => Promise<DefInfo[]>;
+    modInfo: (modFolders: string[]) => Promise<ModInfo[]>;
+  }
+): Promise<Project> {
+  console.log('Reading project from:', folder);
   const project: Partial<ProjectProps> = { folder };
+  const failedTypes: Set<string> = new Set();
+  const data: AllData = {
+    types: [],
+    defs: [],
+    mods: await regenerate.modInfo(await getModFolders()),
+    parents: {},
+  };
+
+  const Data = createManager(data);
 
   try {
     project.manifest = readManifest(
-      await fs.readFile(path.join(folder, 'About', 'About.xml'), 'utf-8')
+      await fs.readFile(path.join(folder, 'About', 'About.xml'), 'utf-8'),
+      Data
     );
   } catch (e) {
+    console.error(e);
     project.manifest = makeManifest();
   }
+
+  console.log('Read manifest');
 
   try {
     let lastLength = failedTypes.size;
     do {
       /* eslint-disable no-await-in-loop */
       lastLength = failedTypes.size;
-      await Data.regenerate(project.manifest.deps, folder, [
-        ...failedTypes.values(),
-      ]);
+      console.log('Regenerating types with', lastLength, 'failedTypes');
+      data.types = await regenerate.typeInfo(
+        await getAllAssemblies(
+          project.manifest.deps.map((mod) => mod.path).toArray(),
+          folder
+        ),
+        [...failedTypes]
+      );
+      console.log('Regenerating defs');
+      data.defs = await regenerate.defInfo(
+        await getDefFiles(
+          await getDefFolders(
+            project.manifest.deps.map((mod) => mod.path).toArray()
+          )
+        ),
+        Data,
+        failedTypes
+      );
+      console.log('Reading defs');
       project.defs = (
         await Promise.all(
           (
             await Promise.all(
-              (await getModPaths(List([folder]), 'Defs'))
+              (await getModPaths([folder], 'Defs'))
                 .filter((a) => a)
                 .map(allFilesRecusive)
             )
@@ -269,13 +332,19 @@ export async function readProject(folder: string): Promise<Project> {
             .map((file) => fs.readFile(file, 'utf-8'))
         )
       )
-        .map(readDefs)
+        .map((text) => readDefs(text, Data))
         .reduce((a, b) => a.concat(b), List());
       /* eslint-enable */
+      console.log('Now have', failedTypes.size, 'failedTypes');
     } while (failedTypes.size !== lastLength);
   } catch (e) {
+    console.error(e);
     project.defs = List();
   }
+
+  console.log('Finished reading defs');
+
+  await fs.writeFile(join(folder, '_info.json'), JSON.stringify(Data.data));
 
   return makeProject(project);
 }

@@ -85,12 +85,12 @@
     "publish": {
       "provider": "github",
       "owner": "legodude17",
-      "repo": "rimworld-modmaker"
+      "repo": "rw-modmaker-studio"
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/legodude17/rimworld-modmaker.git"
+    "url": "git+https://github.com/legodude17/rw-modmaker-studio.git"
   },
   "author": "JDB",
   "license": "MIT",

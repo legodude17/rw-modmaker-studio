@@ -4,16 +4,10 @@ import { IMaskInput } from 'react-imask';
 import { Def, Field } from '../Project';
 import SimpleText from './SimpleText';
 import { TypeInfo } from '../completionItem';
-import { DispatchContext } from '../misc';
+import { DataContext, DispatchContext } from '../util';
 import PathedCheckbox from './PathedCheckbox';
-import {
-  allChildren,
-  allDefsOfType,
-  DataContext,
-  fullType,
-  typeByName,
-} from '../DataManager';
 import SimpleAutocomplete from './SimpleAutocomplete';
+import { fullType } from '../DataManager';
 
 export const DefsContext = createContext([] as Def[]);
 
@@ -31,7 +25,7 @@ function SingleFieldInput({
   typePath: string;
 }) {
   const dispatch = useContext(DispatchContext);
-  const data = useContext(DataContext);
+  const Data = useContext(DataContext);
   const defs = useContext(DefsContext);
   if (typeof field.get(type) !== 'string') return null;
   if (typeInfo?.specialType?.string) {
@@ -120,10 +114,12 @@ function SingleFieldInput({
       />
     );
   }
+  if (!Data) return null;
   if (typeInfo.typeIdentifier === 'System.Type') {
-    const parentTypeName = data.parents[typePath];
-    const parentTypeInfo = typeByName(parentTypeName);
-    const opts = allChildren(parentTypeInfo)?.map((t) =>
+    const parentTypeName = Data.data.parents[typePath];
+    const parentTypeInfo = Data.typeByName(parentTypeName);
+    if (!parentTypeInfo) return null;
+    const opts = Data.allChildren(parentTypeInfo)?.map((t) =>
       t.typeIdentifier.replace('RimWorld.', '').replace('Verse.', '')
     );
     return (
@@ -136,7 +132,7 @@ function SingleFieldInput({
   }
   if (typeInfo?.specialType?.defName) {
     const defType = fullType(typeInfo.specialType.defName) ?? 'Verse.Def';
-    const opts = allDefsOfType(defType)
+    const opts = Data.allDefsOfType(defType)
       .filter((def) => !def.abstract)
       .map((def) => def.defName)
       .concat(

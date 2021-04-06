@@ -9,11 +9,10 @@ import {
 import { Autocomplete } from '@material-ui/lab';
 import CloseIcon from '@material-ui/icons/Close';
 import { makeMod, Mod } from '../Project';
-import * as Data from '../DataManager';
-import { DispatchContext } from '../misc';
+import { DispatchContext, DataContext } from '../util';
 
 export default ({ path, value }: { path: string[]; value: Mod }) => {
-  const data = useContext(Data.DataContext);
+  const Data = useContext(DataContext);
   const dispatch = useContext(DispatchContext);
   const [chosenMod, setChosenMod] = useState<null | string>(value.name ?? null);
   const refs = [
@@ -42,7 +41,7 @@ export default ({ path, value }: { path: string[]; value: Mod }) => {
         }}
       >
         <Autocomplete
-          options={data.mods.map((mod) => mod.name)}
+          options={Data.data.mods.map((mod) => mod.name)}
           getOptionLabel={(a) => a}
           renderInput={(params: TextFieldProps) => (
             <TextField
@@ -76,10 +75,10 @@ export default ({ path, value }: { path: string[]; value: Mod }) => {
             paddingLeft: 10,
           }}
           variant="outlined"
-          disabled={chosenMod == null || Data.modByName(chosenMod) == null}
+          disabled={chosenMod == null || Data?.modByName(chosenMod) == null}
           onClick={() => {
             if (chosenMod == null) return;
-            const mod = Data.modByName(chosenMod);
+            const mod = Data?.modByName(chosenMod);
             if (mod == null) return;
             const newMod = makeMod({
               name: mod?.name,
@@ -90,7 +89,7 @@ export default ({ path, value }: { path: string[]; value: Mod }) => {
               path: mod?.path,
               url: mod?.url,
             });
-            if (!refs.some((ref) => ref.current == null)) {
+            if (refs.every((ref) => ref.current != null)) {
               refs[0].current.value = newMod.id;
               refs[1].current.value = newMod.workshop;
               refs[2].current.value = newMod.url;

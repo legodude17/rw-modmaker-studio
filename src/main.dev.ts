@@ -17,11 +17,23 @@ import log from 'electron-log';
 import settings from 'electron-settings';
 import execa from 'execa';
 import { promises as fs } from 'fs';
+import { List, Seq } from 'immutable';
 import { defaultPrefs } from './prefs';
 import MenuBuilder from './menu';
-import { DefInfo, ModInfo } from './completionItem';
+import { DefInfo, ModInfo, TypeInfo } from './completionItem';
 import { parse } from './parser/XMLParser';
-import { allFilesRecusive } from './util';
+import { readProject } from './fileLoadSaver';
+import {
+  createManager,
+  fullType,
+  getAllAssemblies,
+  getDefFiles,
+  getDefFolders,
+  getModFolders,
+  usesFromDefs,
+} from './DataManager';
+import { AllData, DataManager } from './DataManagerType';
+import { Mod, Project } from './Project';
 
 export default class AppUpdater {
   constructor() {
@@ -55,6 +67,7 @@ const installExtensions = async () => {
       extensions.map((name) => installer[name]),
       forceDownload
     )
+    .then(() => console.log('Installed Extensions!'))
     .catch(console.log);
 };
 
@@ -82,6 +95,8 @@ const createWindow = async () => {
     webPreferences: {
       nodeIntegration: true,
       enableRemoteModule: true,
+      contextIsolation: false,
+      nodeIntegrationInWorker: true,
     },
   });
 
@@ -163,76 +178,66 @@ app.on('activate', () => {
   if (mainWindow === null) createWindow();
 });
 
-ipcMain.handle(
-  'regen-field-info',
-  async (_event, assems: string[], extraTypes: string[]) => {
-    console.log('regen-field-info!');
-    const extractor = (await settings.get('extractorpath')) as string;
-    const output = path.join(app.getPath('temp'), 'fieldinfo.json');
-    const logPath = path.join(app.getPath('temp'), 'log.txt');
-    try {
-      await execa(
-        extractor,
-        assems.concat([
-          '--OutputMode',
-          'file',
-          '-o',
-          output,
-          '--log',
-          logPath,
-          '-v',
-          '--extraTypes',
-          extraTypes.join(' '),
-        ])
-      );
-    } catch (e) {
-      console.log(e);
-      if (e.exitCode !== 1) await fs.writeFile(logPath, e.toString());
-      return logPath;
-    }
-    return output;
-  }
-);
-
-ipcMain.handle('regen-def-database', async (_event, defFolders: string[]) => {
-  console.log('regen-def-database!');
-  const files = (
-    await Promise.all(defFolders.map((f) => allFilesRecusive(f)))
-  ).flat();
-  const output = path.join(app.getPath('temp'), 'defs.json');
-  const defs: DefInfo[] = [];
+async function getTypeInfo(assems: string[], extraTypes: string[]) {
+  const extractor = (await settings.get('extractorpath')) as string;
+  const output = path.join(app.getPath('temp'), 'fieldinfo.json');
   const logPath = path.join(app.getPath('temp'), 'log.txt');
   try {
-    await Promise.all(
-      files.map(async (file: string) => {
-        const text = await fs.readFile(file, 'utf-8');
-        const doc = parse(text);
-        const defsNode = doc.children[0];
-        defsNode.children.forEach((node) => {
-          defs.push({
-            type: node.tag?.content ?? 'Def',
-            name: node.attributes?.Name,
-            defName:
-              node.children.find((val) => val.tag?.content === 'defName')?.text
-                ?.content ?? 'UnnamedDef',
-            parent: node.attributes?.ParentName,
-            abstract: node.attributes?.Abstract === 'True',
-          });
-        });
-      })
+    await execa(
+      extractor,
+      assems.concat([
+        '--OutputMode',
+        'file',
+        '-o',
+        output,
+        '--log',
+        logPath,
+        '-v',
+        '--extraTypes',
+        extraTypes.join(' '),
+      ])
     );
   } catch (e) {
-    await fs.writeFile(logPath, e.toString());
-    return logPath;
+    if (e.exitCode === 1) {
+      throw new Error(
+        (await fs.readFile(logPath, 'utf-8'))
+          .split('\n')
+          .find((s) => s.includes('ERROR'))
+      );
+    }
   }
-  await fs.writeFile(output, JSON.stringify({ defs, files }));
-  return output;
-});
+  return JSON.parse(await fs.readFile(output, 'utf-8')) as TypeInfo[];
+}
 
-ipcMain.handle('regen-installed-mods', async (_event, modFolders: string[]) => {
-  console.log('regen-installed-mods!');
+async function getDefInfo(
+  defFiles: string[],
+  Data?: DataManager,
+  failedTypes?: Set<string>
+) {
+  const defs: DefInfo[] = [];
+  await Promise.all(
+    defFiles.map(async (file: string) => {
+      const text = await fs.readFile(file, 'utf-8');
+      const doc = parse(text);
+      const defsNode = doc.children[0];
+      defsNode.children.forEach((node) => {
+        defs.push({
+          type: fullType(node.tag?.content, failedTypes, Data) ?? 'Verse.Def',
+          name: node.attributes?.Name,
+          defName:
+            node.children.find((val) => val.tag?.content === 'defName')?.text
+              ?.content ?? 'UnnamedDef',
+          parent: node.attributes?.ParentName,
+          abstract: node.attributes?.Abstract === 'True',
+        });
+      });
+    })
+  );
+  return defs;
+}
+
+async function getInstalledMods(modFolders: string[]) {
   const mods: ModInfo[] = [];
-  const output = path.join(app.getPath('temp'), 'mods.json');
   const folders = (
     await Promise.all(
       modFolders.map(async (folder) =>
@@ -286,6 +291,75 @@ ipcMain.handle('regen-installed-mods', async (_event, modFolders: string[]) => {
       }
     })
   );
-  await fs.writeFile(output, JSON.stringify(mods));
-  return output;
-});
+  return mods;
+}
+
+async function getParents(files: string[], Data: DataManager) {
+  const uses: { [key: string]: Set<string> } = {};
+  const parents: { [key: string]: string } = {};
+
+  (
+    await Promise.all(files.map((f) => fs.readFile(f, 'utf-8')))
+  ).forEach((text) => usesFromDefs(text, uses));
+
+  Object.entries(uses).forEach(([keyPath, values]) => {
+    const allParents = Seq(values)
+      .map((val) => Data.typeByName(val))
+      .filter((v) => v)
+      .map((t) => Data.allParents(t as TypeInfo))
+      .filter((v) => v)
+      .toArray() as TypeInfo[][];
+    const parent = allParents[0]?.find((v) =>
+      allParents.every((arr) => arr.includes(v))
+    );
+    if (!parent) return;
+    parents[keyPath] = parent.typeIdentifier;
+  });
+  return parents;
+}
+
+ipcMain.handle('read-project', (_event, folder: string) =>
+  readProject(folder, {
+    typeInfo: getTypeInfo,
+    defInfo: getDefInfo,
+    modInfo: getInstalledMods,
+  }).then((proj) => proj.toJS())
+);
+
+ipcMain.handle(
+  'refresh-data',
+  async (_event, project: Project): Promise<DataManager> => {
+    const data: AllData = {
+      types: [],
+      defs: [],
+      mods: await getInstalledMods(await getModFolders()),
+      parents: {},
+    };
+    const Data = createManager(data);
+
+    const defFiles = await getDefFiles(
+      await getDefFolders(
+        project.manifest.deps.map((mod) => mod.path).toArray()
+      )
+    );
+
+    const failedTypes: Set<string> = new Set();
+    let lastLength = failedTypes.size;
+    do {
+      /* eslint-disable no-await-in-loop */
+      lastLength = failedTypes.size;
+      data.types = await getTypeInfo(
+        await getAllAssemblies(
+          project.manifest.deps.map((mod) => mod.path).toArray(),
+          project.folder
+        ),
+        [...failedTypes]
+      );
+      data.defs = await getDefInfo(defFiles, Data, failedTypes);
+      /* eslint-enable */
+    } while (failedTypes.size !== lastLength);
+    data.parents = await getParents(defFiles, Data);
+
+    return Data;
+  }
+);

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { TextField, TextFieldProps } from '@material-ui/core';
-import { DispatchContext } from '../misc';
+import { DispatchContext } from '../util';
 
 function SimpleText({
   value = '',

@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect, memo } from 'react';
 import { TextField, TextFieldProps } from '@material-ui/core';
 import { Autocomplete } from '@material-ui/lab';
-import { DispatchContext } from '../misc';
+import { DispatchContext } from '../util';
 
 function SimpleAutocomplete({
   options,

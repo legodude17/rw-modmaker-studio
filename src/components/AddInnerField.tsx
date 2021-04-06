@@ -1,9 +1,8 @@
 import * as React from 'react';
 import { IconButton } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
-import * as Data from '../DataManager';
 import { TypeInfo } from '../completionItem';
-import { DispatchContext } from '../misc';
+import { DispatchContext } from '../util';
 import SingleFieldInput from './SingleFieldInput';
 import { makeField, ProjectAction } from '../Project';
 
@@ -17,7 +16,6 @@ export default function AddInnerField({
   typeInfo: TypeInfo;
 }) {
   const [text, setText] = React.useState('');
-  const data = React.useContext(Data.DataContext);
   const dispatch: React.Dispatch<ProjectAction> = (value: ProjectAction) =>
     setText(value.newValue as string);
   return (
@@ -26,7 +24,7 @@ export default function AddInnerField({
         <SingleFieldInput
           typePath={typePath}
           typeInfo={typeInfo}
-          path={[!!text]}
+          path={[(!!text).toString()]}
           field={makeField({ value: text })}
         />
       </DispatchContext.Provider>

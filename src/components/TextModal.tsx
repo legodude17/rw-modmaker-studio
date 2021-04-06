@@ -9,6 +9,7 @@ import {
 } from '@material-ui/core';
 import { ClassNameMap } from '@material-ui/styles';
 import { Autocomplete } from '@material-ui/lab';
+import { useHistory } from 'react-router';
 
 function TextModal({
   openRef,
@@ -18,6 +19,7 @@ function TextModal({
   helperText,
   buttonText,
   autocomplete,
+  to,
 }: {
   openRef: React.MutableRefObject<() => void>;
   onSubmit: (arg: string) => void | Promise<void>;
@@ -26,7 +28,9 @@ function TextModal({
   helperText: string;
   buttonText: string;
   autocomplete?: () => string[] | Promise<string[]>;
+  to?: string;
 }) {
+  const history = useHistory();
   const [text, setText] = React.useState('');
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<string[]>([]);
@@ -114,10 +118,12 @@ function TextModal({
                   setWaiting(false);
                   setOpen(false);
                   setError(false);
+                  if (to) history.push(to);
                   return null;
                 })
-                .catch(() => {
+                .catch((err) => {
                   setWaiting(false);
+                  helperText = err;
                   setError(true);
                 });
             } else {
@@ -135,6 +141,7 @@ function TextModal({
 
 TextModal.defaultProps = {
   autocomplete: null,
+  to: '',
 };
 
 export default TextModal;

@@ -1,8 +1,9 @@
 /* eslint-disable promise/no-nesting */
 import { promises as fs, constants } from 'fs';
-import { List } from 'immutable';
 import path from 'path';
-import { Def } from './Project';
+import { createContext } from 'react';
+import { DataManager } from './DataManagerType';
+import { Def, Project, ProjectAction } from './Project';
 
 export const allFilesRecusive = (folder: string): Promise<string[]> =>
   fs
@@ -22,7 +23,7 @@ export const allFilesRecusive = (folder: string): Promise<string[]> =>
     );
 
 export function getModPaths(
-  mods: List<string>,
+  mods: string[],
   subPath: string
 ): Promise<string[]> {
   return Promise.all(
@@ -62,3 +63,14 @@ export function getName(def: Def): string {
 export function getId(def: Def): string {
   return `${def.type}/${getName(def)}`;
 }
+
+export enum SidebarTab {
+  Code,
+  Search,
+}
+
+export const DispatchContext = createContext<React.Dispatch<ProjectAction>>(
+  (action: ProjectAction) => action.newValue as Project
+);
+
+export const DataContext = createContext<DataManager | undefined>(undefined);
