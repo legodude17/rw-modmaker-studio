@@ -1,20 +1,14 @@
 import * as React from 'react';
-import { CircularProgress, Toolbar, useTheme } from '@material-ui/core';
+import { makeStyles, Toolbar, useTheme } from '@material-ui/core';
 import { ipcRenderer } from 'electron';
-import { ClassNameMap } from '@material-ui/core/styles/withStyles';
-import settings from 'electron-settings';
-import { promises as fs } from 'fs';
-import path from 'path';
-import MainAppToolbar from './MainAppToolbar';
+import { settings } from '../electron';
 import ManifestDisplay from './ManifestDisplay';
 import Sidebar1 from './Sidebar1';
 import { CodeTab, SearchTab } from './Sidebar2';
-import { Project, makeDef } from '../Project';
+import { Project } from '../Project';
 import DefDisplay from './DefDisplay';
-import { getId, SidebarTab, DispatchContext, DataContext } from '../util';
-import { DefsContext } from './SingleFieldInput';
-import { DataManager } from '../DataManagerType';
-import { createManager } from '../DataManager';
+import { getId, SidebarTab, DispatchContext, DefsContext } from '../util';
+import AddDefModal from './AddDefModal';
 
 function useWidth(deps: React.DependencyList): [number, React.Ref<Node>] {
   const [width, setWidth] = React.useState(0);
@@ -40,47 +34,34 @@ function TabHelper({
   return <>{curTab === wantTab && children}</>;
 }
 
-function ProjectDisplay({
-  classes,
-  project,
-}: {
-  classes: ClassNameMap<
-    | 'root'
-    | 'content'
-    | 'appBar'
-    | 'drawer'
-    | 'drawerPaper1'
-    | 'drawerPaper2'
-    | 'drawerContainer'
-    | 'pathInput'
-    | 'title'
-    | 'container'
-    | 'listItem'
-    | 'modal'
-  >;
-  project: Project;
-}) {
+const useStyles = makeStyles((theme) => ({
+  root: {
+    display: 'flex',
+  },
+  content: {
+    flexGrow: 1,
+    padding: theme.spacing(3),
+    left: 'auto',
+  },
+}));
+
+function ProjectDisplay({ project }: { project: Project }) {
+  const classes = useStyles();
   const dispatch = React.useContext(DispatchContext);
   const [tab, setTab] = React.useState(SidebarTab.Code);
-  const [current, setCurrent] = React.useState('.manifest');
   const [counter, setCounter] = React.useState(0);
   const update = React.useCallback(() => setCounter((num) => num + 1), []);
   const [small, sidebar1Ref] = useWidth([counter]);
   const [large, sidebar2Ref] = useWidth([project.defs, counter]);
+  const addDefRef = React.useRef(() => null);
 
   React.useEffect(() => {
-    function addDef() {
-      dispatch({
-        type: 'add',
-        path: ['defs'],
-        newValue: makeDef(),
-      });
-    }
+    const addDef = () => addDefRef.current();
     ipcRenderer.on('new-def', addDef);
     return () => {
       ipcRenderer.off('new-def', addDef);
     };
-  }, []);
+  }, [dispatch]);
   // React.useEffect(() => {
   //   Data.regenerate(project.manifest.deps, project.folder);
   // }, [project.manifest.deps, project.folder]);
@@ -90,14 +71,18 @@ function ProjectDisplay({
   const usedTheme = useTheme();
 
   return (
-    <div className={classes.root}>
-      <MainAppToolbar classes={classes} />
-      <Sidebar1 classes={classes} setTab={setTab} paperRef={sidebar1Ref} />
+    <>
+      <Sidebar1 setTab={setTab} paperRef={sidebar1Ref} />
       <TabHelper curTab={tab} wantTab={SidebarTab.Code}>
         <CodeTab
-          classes={classes}
           project={project}
-          setCurrent={setCurrent}
+          setCurrent={(current) =>
+            dispatch({
+              type: 'set',
+              path: ['current'],
+              newValue: current,
+            })
+          }
           paperRef={sidebar2Ref}
           margin={small}
           update={update}
@@ -105,8 +90,13 @@ function ProjectDisplay({
       </TabHelper>
       <TabHelper curTab={tab} wantTab={SidebarTab.Search}>
         <SearchTab
-          classes={classes}
-          setCurrent={setCurrent}
+          setCurrent={(current) =>
+            dispatch({
+              type: 'set',
+              path: ['current'],
+              newValue: current,
+            })
+          }
           paperRef={sidebar2Ref}
           margin={small}
         />
@@ -119,23 +109,39 @@ function ProjectDisplay({
         }}
       >
         <Toolbar />
-        {current === '.manifest' ? (
+        {project.current === '.manifest' ? (
           <ManifestDisplay manifest={project.manifest} />
         ) : (
-          <DefsContext.Provider value={project.defs.toArray()}>
+          <DefsContext.Provider
+            value={{ defs: project.defs.toArray(), folder: project.folder }}
+          >
             <DefDisplay
-              def={project.defs.find((def) => getId(def) === current)}
-              defIndex={project.defs.findIndex((def) => getId(def) === current)}
+              def={project.defs.find((def) => getId(def) === project.current)}
+              defIndex={project.defs.findIndex(
+                (def) => getId(def) === project.current
+              )}
             />
           </DefsContext.Provider>
         )}
       </main>
-    </div>
+      <AddDefModal
+        project={project}
+        openRef={addDefRef}
+        addDef={(def) =>
+          dispatch({
+            type: 'add',
+            path: ['defs'],
+            newValue: def,
+          })
+        }
+      />
+    </>
   );
 }
 
 export default React.memo(
   ProjectDisplay,
   (prevState, nextState) =>
-    prevState.project.folder === nextState.project.folder
+    prevState.project.folder === nextState.project.folder &&
+    prevState.project.equals(nextState.project)
 );

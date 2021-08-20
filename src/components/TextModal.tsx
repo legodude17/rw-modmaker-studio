@@ -1,20 +1,20 @@
 import * as React from 'react';
 import {
-  Paper,
   TextField,
   Button,
   TextFieldProps,
-  Modal,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@material-ui/core';
-import { ClassNameMap } from '@material-ui/styles';
 import { Autocomplete } from '@material-ui/lab';
 import { useHistory } from 'react-router';
 
 function TextModal({
   openRef,
   onSubmit,
-  classes,
   label,
   helperText,
   buttonText,
@@ -23,7 +23,6 @@ function TextModal({
 }: {
   openRef: React.MutableRefObject<() => void>;
   onSubmit: (arg: string) => void | Promise<void>;
-  classes: ClassNameMap<'modal'>;
   label: string;
   helperText: string;
   buttonText: string;
@@ -37,6 +36,7 @@ function TextModal({
   const [waiting, setWaiting] = React.useState(false);
   const loading = open && options.length === 0 && autocomplete != null;
   const [error, setError] = React.useState(false);
+  const [help, setHelp] = React.useState(helperText);
 
   React.useEffect(() => {
     let active = true;
@@ -62,12 +62,13 @@ function TextModal({
     openRef.current = () => setOpen(true);
   }
   return (
-    <Modal open={open} onClose={() => setOpen(false)}>
-      <Paper className={classes.modal} elevation={10}>
+    <Dialog open={open} onClose={() => setOpen(false)}>
+      <DialogTitle>{label}</DialogTitle>
+      <DialogContent>
         {autocomplete == null ? (
           <TextField
             label={label}
-            helperText={helperText}
+            helperText={help}
             onChange={(event) => setText(event.target.value)}
             value={text}
             style={{ marginBottom: 10 }}
@@ -78,7 +79,7 @@ function TextModal({
           <Autocomplete
             options={options}
             onChange={(_event, newValue) => setText(newValue as string)}
-            value={text || options[0] || 'Loading...'}
+            inputValue={text || 'Loading...'}
             style={{ marginBottom: 10 }}
             getOptionLabel={(a) => a ?? ''}
             loading={loading}
@@ -89,7 +90,7 @@ function TextModal({
                 label={label}
                 variant="outlined"
                 error={error}
-                helperText={helperText}
+                helperText={help}
                 autoFocus
                 InputProps={{
                   ...params.InputProps,
@@ -106,6 +107,8 @@ function TextModal({
             )}
           />
         )}
+      </DialogContent>
+      <DialogActions>
         <Button
           disabled={waiting}
           onClick={() => {
@@ -123,7 +126,7 @@ function TextModal({
                 })
                 .catch((err) => {
                   setWaiting(false);
-                  helperText = err;
+                  setHelp(err);
                   setError(true);
                 });
             } else {
@@ -134,8 +137,8 @@ function TextModal({
           {buttonText}
           {waiting ? <CircularProgress color="inherit" size={20} /> : null}
         </Button>
-      </Paper>
-    </Modal>
+      </DialogActions>
+    </Dialog>
   );
 }
 

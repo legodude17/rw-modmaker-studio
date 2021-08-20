@@ -5,30 +5,48 @@ import {
   List as ListElement,
   ListItem,
   ListItemText,
+  makeStyles,
 } from '@material-ui/core';
 import { ClassNameMap } from '@material-ui/styles';
 import { Map } from 'immutable';
 import { Project } from '../Project';
 import DefTypeList from './DefTypeList';
-import { getName } from '../util';
+import { getId, getName } from '../util';
+
+const useStyles = makeStyles((theme) => ({
+  listItem: {
+    margin: 0,
+    padding: 5,
+    display: 'block',
+    position: 'relative',
+    minWidth: 10,
+    marginBottom: 5,
+  },
+  drawerContainer: {
+    overflow: 'auto',
+    overflowX: 'hidden',
+  },
+  drawerPaper2: {
+    zIndex: theme.zIndex.drawer - 1,
+    left: 'auto',
+    position: 'fixed',
+  },
+}));
 
 function CodeTabInt({
-  classes,
   project,
   setCurrent,
   paperRef,
   margin,
   update,
 }: {
-  classes: ClassNameMap<
-    'drawerPaper2' | 'drawerContainer' | 'listItem' | 'drawer'
-  >;
   project: Project;
   setCurrent: (arg: string) => void;
   paperRef: React.Ref<Node>;
   margin: number;
   update: () => void;
 }) {
+  const classes = useStyles();
   const defsByType = React.useMemo(
     () =>
       Map<string, string[]>().withMutations((map) =>
@@ -38,11 +56,11 @@ function CodeTabInt({
             : map.set(def.type, [getName(def)])
         )
       ),
-    [project.defs]
+    [project.defs.map((def) => getId(def)).join(' ')]
   );
+
   return (
     <Drawer
-      className={classes.drawer}
       variant="permanent"
       classes={{
         paper: classes.drawerPaper2,
@@ -66,7 +84,7 @@ function CodeTabInt({
           </ListItem>
           {defsByType
             .map((defs, type) => (
-              <li key={type} style={{}}>
+              <li key={type}>
                 <ul style={{ padding: 0 }}>
                   <DefTypeList
                     defs={defs}
@@ -85,21 +103,17 @@ function CodeTabInt({
 }
 
 function SearchTabInt({
-  classes,
   paperRef,
   setCurrent,
   margin,
 }: {
-  classes: ClassNameMap<
-    'drawerPaper2' | 'drawerContainer' | 'listItem' | 'drawer'
-  >;
   setCurrent: (arg: string) => void;
   paperRef: React.Ref<Node>;
   margin: number;
 }) {
+  const classes = useStyles();
   return (
     <Drawer
-      className={classes.drawer}
       variant="permanent"
       classes={{
         paper: classes.drawerPaper2,
@@ -120,12 +134,13 @@ function SearchTabInt({
   );
 }
 
-export const CodeTab = React.memo(CodeTabInt);
-// (prevState, nextState) =>
-//   prevState.project.defs
-//     .map((def) => `${def.type}/${def.defName}`)
-//     .equals(
-//       nextState.project.defs.map((def) => `${def.type}/${def.defName}`)
-//     ) && prevState.paperRef === nextState.paperRef
+export const CodeTab = React.memo(
+  CodeTabInt,
+  (prevState, nextState) =>
+    prevState.project.defs.map((def) => getId(def)).join(' ') ===
+      nextState.project.defs.map((def) => getId(def)).join(' ') &&
+    prevState.paperRef === nextState.paperRef &&
+    prevState.margin === nextState.margin
+);
 
 export const SearchTab = React.memo(SearchTabInt);

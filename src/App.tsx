@@ -1,106 +1,109 @@
+/* eslint-disable promise/no-nesting */
 import * as React from 'react';
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
-import { CssBaseline, ThemeProvider } from '@material-ui/core';
+import {
+  CssBaseline,
+  makeStyles,
+  ThemeProvider,
+  Typography,
+} from '@material-ui/core';
 import { ipcRenderer } from 'electron';
-import { List } from 'immutable';
 import path from 'path';
-import settings from 'electron-settings';
 import { promises as fs } from 'fs';
-import makeStyles from './styles';
-import Settings from './Settings';
+import { formatDistance } from 'date-fns';
+import { defaultPrefs } from './prefs';
+import { settings } from './electron';
+import Settings from './components/Settings';
 import theme from './theme';
 import TextModal from './components/TextModal';
-import { DataContext, DispatchContext } from './util';
-import { makeProject, Project, ProjectAction, NewValue } from './Project';
+import { DataContext, DispatchContext, projectReducer } from './util';
+import { makeProject, Project, ProjectAction } from './Project';
 import ProjectDisplay from './components/ProjectDisplay';
 import Landing from './components/Landing';
 import Loading from './components/Loading';
 import { DataManager } from './DataManagerType';
+import MainAppToolbar from './components/MainAppToolbar';
+import log from './log';
 
-function projectReducer(prevState: Project, action: ProjectAction): Project {
-  console.log(action.path, action.newValue, action.type);
-  switch (action.type) {
-    case 'set':
-      return prevState.setIn(action.path, action.newValue);
-    case 'switch':
-      return action.newValue as Project;
-    case 'add':
-      return prevState.setIn(
-        action.path,
-        (prevState.getIn(action.path) as List<NewValue>).push(action.newValue)
-      );
-    case 'remove': {
-      const val = prevState.getIn(action.path);
-      if (List.isList(val)) {
-        const list = val as List<NewValue>;
-        return prevState.setIn(
-          action.path,
-          list.remove(list.indexOf(action.newValue))
-        );
-      }
-      return prevState.removeIn(action.path);
-    }
-    default:
-      return prevState;
-  }
-}
-
-const useStyles = makeStyles();
+const useStyles = makeStyles(() => ({
+  root: {
+    display: 'flex',
+  },
+}));
 
 export default function App() {
   const classes = useStyles();
   const openNewProjectDialog = React.useRef(() => null);
   const openOpenProjectDialog = React.useRef(() => null);
-  React.useEffect(() => {
-    const newProjectHook = () => openNewProjectDialog.current();
-    const openProjectHook = () => openOpenProjectDialog.current();
-    ipcRenderer.on('new-project', newProjectHook);
-    ipcRenderer.on('open-project', openProjectHook);
-    return () => {
-      ipcRenderer.off('new-project', newProjectHook);
-      ipcRenderer.off('open-project', openProjectHook);
-    };
-  }, []);
-
   const [project, dispatch] = React.useReducer<
     React.Reducer<Project, ProjectAction>,
     undefined
   >(projectReducer, undefined, makeProject);
   const [Data, setData] = React.useState<DataManager | undefined>();
+  const [lastSave, setLastSave] = React.useState<Date | boolean>(new Date());
+  const [now, setNow] = React.useState(new Date());
+  React.useEffect(() => {
+    settings.init(defaultPrefs);
+    log.init();
+  }, []);
+  React.useEffect(() => {
+    const newProjectHook = () => openNewProjectDialog.current();
+    const openProjectHook = () => openOpenProjectDialog.current();
+    async function save() {
+      setLastSave(false);
+      await ipcRenderer.invoke('save', project.toJS());
+      setLastSave(new Date());
+    }
+    ipcRenderer.on('new-project', newProjectHook);
+    ipcRenderer.on('open-project', openProjectHook);
+    ipcRenderer.on('save', save);
+    return () => {
+      ipcRenderer.off('new-project', newProjectHook);
+      ipcRenderer.off('open-project', openProjectHook);
+      ipcRenderer.off('save', save);
+    };
+  }, [project]);
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 500);
+    return () => clearInterval(id);
+  });
+
+  window.Data = Data;
+  window.Project = project;
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Switch>
-          <Route path="/project">
-            <DataContext.Provider value={Data}>
-              <DispatchContext.Provider value={dispatch}>
-                <ProjectDisplay classes={classes} project={project} />
-              </DispatchContext.Provider>
-            </DataContext.Provider>
-          </Route>
-          <Route path="/loading">
-            <Loading
-              classes={classes}
-              project={project}
-              setProject={(proj) => {
-                console.log('New project:', proj);
-                dispatch({
-                  type: 'switch',
-                  path: ['.'],
-                  newValue: proj,
-                });
-              }}
-              setData={setData}
-            />
-          </Route>
-          <Route path="/settings">
-            <Settings classes={classes} />
-          </Route>
-          <Route path="/">
-            <Landing classes={classes} />
-          </Route>
-        </Switch>
+        <DispatchContext.Provider value={dispatch}>
+          <div className={classes.root}>
+            <MainAppToolbar>
+              <Typography variant="h6">
+                {typeof lastSave !== 'boolean'
+                  ? `(last save ${formatDistance(lastSave, now, {
+                      addSuffix: true,
+                      includeSeconds: true,
+                    })})`
+                  : '(saving...)'}
+              </Typography>
+            </MainAppToolbar>
+            <Switch>
+              <Route path="/project">
+                <DataContext.Provider value={Data}>
+                  <ProjectDisplay project={project} />
+                </DataContext.Provider>
+              </Route>
+              <Route path="/loading">
+                <Loading project={project} setData={setData} />
+              </Route>
+              <Route path="/settings">
+                <Settings />
+              </Route>
+              <Route path="/">
+                <Landing loaded={project.loaded} />
+              </Route>
+            </Switch>
+          </div>
+        </DispatchContext.Provider>
 
         <TextModal
           openRef={openNewProjectDialog}
@@ -114,7 +117,7 @@ export default function App() {
                   new Promise((resolve, reject) =>
                     fs
                       .access(folder)
-                      .then(() => reject('Folder exists'))
+                      .then(() => reject(new Error('Folder exists')))
                       .catch(() => {
                         dispatch({
                           type: 'switch',
@@ -126,7 +129,6 @@ export default function App() {
                   )
               )
           }
-          classes={classes}
           label="New Project"
           helperText="The name of the folder to create in your mod folder"
           buttonText="Create!"
@@ -147,7 +149,6 @@ export default function App() {
                 })
               )
           }
-          classes={classes}
           label="Open Project"
           helperText="The name of the folder to open"
           buttonText="Open"

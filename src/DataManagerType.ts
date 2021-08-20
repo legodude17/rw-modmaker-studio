@@ -5,8 +5,10 @@ export type DataManager = {
   typeByName: (type: string) => TypeInfo | undefined;
   allModNames: () => string[];
   modByName: (name: string) => ModInfo | undefined;
-  allParents: (type: TypeInfo) => TypeInfo[] | undefined;
-  allChildren: (type: TypeInfo) => TypeInfo[] | undefined;
+  allParents: (type?: TypeInfo) => TypeInfo[] | undefined;
+  allChildren: (type?: TypeInfo) => TypeInfo[] | undefined;
+  clearCache: () => void;
+  getNamespaces: () => string[];
   data: AllData;
   failedTypes?: Set<string>;
 };

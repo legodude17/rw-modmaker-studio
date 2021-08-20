@@ -1,15 +1,13 @@
-import { createContext, useContext, memo } from 'react';
+import { useContext, memo } from 'react';
 import { List } from 'immutable';
 import { IMaskInput } from 'react-imask';
-import { Def, Field } from '../Project';
+import { Field } from '../Project';
 import SimpleText from './SimpleText';
 import { TypeInfo } from '../completionItem';
-import { DataContext, DispatchContext } from '../util';
+import { DataContext, DefsContext } from '../util';
 import PathedCheckbox from './PathedCheckbox';
 import SimpleAutocomplete from './SimpleAutocomplete';
 import { fullType } from '../DataManager';
-
-export const DefsContext = createContext([] as Def[]);
 
 function SingleFieldInput({
   field,
@@ -24,10 +22,10 @@ function SingleFieldInput({
   type?: 'value' | 'key';
   typePath: string;
 }) {
-  const dispatch = useContext(DispatchContext);
   const Data = useContext(DataContext);
-  const defs = useContext(DefsContext);
+  const { defs } = useContext(DefsContext);
   if (typeof field.get(type) !== 'string') return null;
+
   if (typeInfo?.specialType?.string) {
     return (
       <SimpleText
@@ -103,6 +101,7 @@ function SingleFieldInput({
         options={opts ?? []}
         path={path.concat(type)}
         value={field.get(type) as string}
+        textFieldProps={{ style: { flexGrow: 1 } }}
       />
     );
   }
@@ -127,11 +126,13 @@ function SingleFieldInput({
         options={opts ?? []}
         path={path.concat(type)}
         value={field.get(type) as string}
+        textFieldProps={{ style: { flexGrow: 1 }, fullWidth: true }}
       />
     );
   }
   if (typeInfo?.specialType?.defName) {
-    const defType = fullType(typeInfo.specialType.defName) ?? 'Verse.Def';
+    const defType =
+      fullType(typeInfo.specialType.defName, undefined, Data) ?? 'Verse.Def';
     const opts = Data.allDefsOfType(defType)
       .filter((def) => !def.abstract)
       .map((def) => def.defName)
@@ -145,6 +146,7 @@ function SingleFieldInput({
         options={opts ?? []}
         path={path.concat(type)}
         value={field.get(type) as string}
+        textFieldProps={{ style: { flexGrow: 1 }, fullWidth: true }}
       />
     );
   }
@@ -154,6 +156,7 @@ function SingleFieldInput({
         options={['North', 'South', 'East', 'West']}
         path={path.concat(type)}
         value={field.get(type) as string}
+        textFieldProps={{ style: { flexGrow: 1 }, fullWidth: true }}
       />
     );
   }
@@ -164,18 +167,6 @@ function SingleFieldInput({
 SingleFieldInput.defaultProps = {
   type: 'value',
 };
-
-export const isSingleInput = (typeInfo: TypeInfo) =>
-  typeInfo?.specialType?.string ||
-  typeInfo?.specialType?.float ||
-  typeInfo?.specialType?.integer ||
-  (typeInfo?.specialType?.customFormats &&
-    typeInfo.specialType?.customFormats.length) ||
-  typeInfo?.specialType?.enum ||
-  typeInfo?.specialType?.bool ||
-  typeInfo?.typeIdentifier === 'System.Type' ||
-  typeInfo?.specialType?.defName ||
-  typeInfo?.typeIdentifier === 'Verse.Rot4';
 
 const Memoized = memo(
   SingleFieldInput,

@@ -6,7 +6,6 @@ import {
   useTheme,
   Collapse,
 } from '@material-ui/core';
-import { List } from 'immutable';
 
 function DefTypeList({
   defs,
@@ -21,6 +20,7 @@ function DefTypeList({
 }) {
   const [collapsed, setCollased] = useState(false);
   const theme = useTheme();
+
   return (
     <>
       <ListSubheader>
@@ -73,5 +73,5 @@ export default memo(
   DefTypeList,
   (prevState, nextState) =>
     prevState.type === nextState.type &&
-    List(prevState.defs).equals(List(nextState.defs))
+    prevState.defs.join(' ') === nextState.defs.join(' ')
 );

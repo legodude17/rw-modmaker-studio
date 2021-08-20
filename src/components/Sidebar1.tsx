@@ -5,6 +5,7 @@ import {
   List as ListElement,
   ListItem,
   ListItemIcon,
+  makeStyles,
 } from '@material-ui/core';
 import { ClassNameMap } from '@material-ui/styles';
 import CodeIcon from '@material-ui/icons/Code';
@@ -22,20 +23,36 @@ function TabButton({ tab }: { tab: SidebarTab }) {
   }
 }
 
+const useStyles = makeStyles((theme) => ({
+  drawerPaper1: {
+    left: 'auto',
+    position: 'fixed',
+  },
+  listItem: {
+    margin: 0,
+    padding: 5,
+    display: 'block',
+    position: 'relative',
+    minWidth: 10,
+    marginBottom: 5,
+  },
+  drawerContainer: {
+    overflow: 'auto',
+    overflowX: 'hidden',
+  },
+}));
+
 function Sidebar1({
-  classes,
   setTab,
   paperRef,
 }: {
-  classes: ClassNameMap<
-    'drawer' | 'drawerPaper1' | 'drawerContainer' | 'listItem'
-  >;
   setTab: (arg: SidebarTab) => void;
   paperRef: React.Ref<Node>;
 }) {
+  const classes = useStyles();
+
   return (
     <Drawer
-      className={classes.drawer}
       variant="permanent"
       classes={{
         paper: classes.drawerPaper1,

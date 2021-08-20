@@ -14,23 +14,20 @@ const FieldDisplay = ({
   fieldName,
   actions,
   summary,
+  expandable,
 }: {
-  children: React.ReactNode | React.ReactNode[];
+  children: React.ReactNode;
   fieldName: string;
-  actions?: React.ReactNode | React.ReactNode[];
+  actions?: React.ReactNode;
   summary?: React.ReactNode;
+  expandable?: boolean;
 }) => {
-  const hasActions = actions != null;
-  const isExpandable =
-    hasActions ||
-    (children != null &&
-      Array.isArray(children) &&
-      (children as Array<React.ReactNode>).length !== 0);
-  return isExpandable ? (
+  return expandable ? (
     <Accordion
       style={{
         width: '100%',
       }}
+      TransitionProps={{ unmountOnExit: true }}
     >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <p style={{ marginLeft: 10, flexGrow: 1 }}>{fieldName}</p>
@@ -39,8 +36,8 @@ const FieldDisplay = ({
       <AccordionDetails style={{ display: 'flex', flexDirection: 'column' }}>
         {children}
       </AccordionDetails>
-      {hasActions && <Divider />}
-      {hasActions && <AccordionActions>{actions}</AccordionActions>}
+      {actions != null && <Divider />}
+      {actions != null && <AccordionActions>{actions}</AccordionActions>}
     </Accordion>
   ) : (
     <Paper
@@ -63,6 +60,7 @@ const FieldDisplay = ({
 FieldDisplay.defaultProps = {
   actions: null,
   summary: null,
+  expandable: false,
 };
 
 export default FieldDisplay;

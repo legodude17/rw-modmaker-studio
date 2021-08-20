@@ -16,6 +16,8 @@ export type ProjectProps = {
   manifest: ModManifest;
   defs: List<Def>;
   folder: string;
+  loaded: boolean;
+  current: string;
 } & BaseProps;
 
 export type Field = RecordOf<FieldProps>;
@@ -24,17 +26,17 @@ export type FieldProps = {
   key: string;
   value: List<Field> | string;
   type: string;
-  attrs?: {
-    [key: string]: string | null;
-  };
+  attrs?: Map<string, string | undefined>;
+  id: number;
 } & BaseProps;
 
 export const makeField = Record<FieldProps>({
   key: 'defName',
   value: 'UnnamedDef',
   type: 'System.String',
-  attrs: {},
+  attrs: Map(),
   REC_TYPE: 'Field',
+  id: -1,
 });
 
 export type Def = RecordOf<DefProps>;
@@ -46,6 +48,7 @@ export type DefProps = {
   parent?: string;
   abstract: boolean;
   type: string;
+  file: string;
 } & BaseProps;
 
 export const makeDef = Record<DefProps>({
@@ -56,6 +59,7 @@ export const makeDef = Record<DefProps>({
   abstract: false,
   type: 'Verse.ThingDef',
   REC_TYPE: 'Def',
+  file: 'Defs/Defs.xml',
 });
 
 export type ModProps = {
@@ -108,7 +112,9 @@ export const makeProject = Record<ProjectProps>({
   manifest: makeManifest(),
   defs: List(),
   folder: '',
+  loaded: false,
   REC_TYPE: 'Project',
+  current: '.manifest',
 });
 
 export enum LoadType {

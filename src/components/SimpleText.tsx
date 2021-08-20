@@ -11,39 +11,45 @@ function SimpleText({
   label = () => '',
   error = () => false,
   helperText = () => '',
+  transformValue = (arg) => arg,
 }: {
   path: string[];
   value?: string;
   multiline?: boolean;
   style?: React.CSSProperties;
   textFieldProps?: TextFieldProps;
-  label?: (text: string) => string;
-  helperText?: (text: string) => string;
-  error?: (text: string) => boolean;
+  label?: ((text: string) => string) | string;
+  helperText?: ((text: string) => string) | string;
+  error?: ((text: string) => boolean) | boolean;
+  transformValue?: (arg: string) => string;
 }) {
   const dispatch = React.useContext(DispatchContext);
   const [text, setText] = React.useState(value);
   React.useEffect(() => setText(value), [path]);
-  React.useEffect(() => {
-    dispatch({
-      type: 'set',
-      path,
-      newValue: text,
-    });
-  }, [text]);
+
   return (
     <TextField
-      onChange={(event) => setText(event.target.value)}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...textFieldProps}
+      onChange={(event) => {
+        dispatch({
+          type: 'set',
+          path,
+          newValue: transformValue(event.target.value),
+        });
+        textFieldProps?.onChange?.(event);
+        setText(event.target.value);
+      }}
       style={style}
       value={text}
       multiline={multiline}
       fullWidth
       key="input"
-      label={label(text)}
-      error={error(text)}
-      helperText={helperText(text)}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...textFieldProps}
+      label={typeof label === 'function' ? label(text) : label}
+      error={typeof error === 'function' ? error(text) : error}
+      helperText={
+        typeof helperText === 'function' ? helperText(text) : helperText
+      }
     />
   );
 }
@@ -56,6 +62,11 @@ SimpleText.defaultProps = {
   helperText: () => '',
   error: () => false,
   value: '',
+  transformValue: (arg: string) => arg,
 };
 
-export default React.memo(SimpleText);
+export default React.memo(
+  SimpleText,
+  (prevState, nextState) =>
+    prevState.path.join('.') === nextState.path.join('.')
+);

@@ -14,7 +14,7 @@ import CloseIcon from '@material-ui/icons/Close';
 import { LoadType, makeMod, ModManifest, ModManifestProps } from '../Project';
 import { DataContext, DispatchContext } from '../util';
 import FieldDisplay from './FieldDisplay';
-import AddMod from './AddMod';
+import Add from './Add';
 import ModDisplay from './ModDisplay';
 import SimpleText from './SimpleText';
 
@@ -43,8 +43,9 @@ export default function ManifestDisplay({
         <ListItem key="deps">
           <FieldDisplay
             fieldName="Dependencies"
+            expandable
             actions={
-              <AddMod
+              <Add
                 add={(modName) => {
                   const mod = Data?.modByName(modName);
                   dispatch({
@@ -61,7 +62,7 @@ export default function ManifestDisplay({
                     }),
                   });
                 }}
-                prop="name"
+                opts={Data?.data.mods?.map((mod) => mod.name) ?? ['']}
               />
             }
           >
@@ -76,7 +77,7 @@ export default function ManifestDisplay({
           </FieldDisplay>
         </ListItem>
         <ListItem key="versions">
-          <FieldDisplay fieldName="Versions">
+          <FieldDisplay fieldName="Versions" expandable>
             {['1.0', '1.1', '1.2'].map((ver) => (
               <FormControlLabel
                 control={
@@ -103,8 +104,9 @@ export default function ManifestDisplay({
         <ListItem key="incompat">
           <FieldDisplay
             fieldName="incompat"
+            expandable
             actions={
-              <AddMod
+              <Add
                 add={(mod) =>
                   dispatch({
                     type: 'add',
@@ -112,7 +114,7 @@ export default function ManifestDisplay({
                     newValue: mod,
                   })
                 }
-                prop="id"
+                opts={Data?.data.mods?.map((mod) => mod.id) ?? ['']}
               />
             }
           >
@@ -133,8 +135,9 @@ export default function ManifestDisplay({
         <ListItem key="loadRules">
           <FieldDisplay
             fieldName="loadRules"
+            expandable
             actions={
-              <AddMod
+              <Add
                 add={(mod) =>
                   dispatch({
                     type: 'set',
@@ -142,7 +145,7 @@ export default function ManifestDisplay({
                     newValue: LoadType.After,
                   })
                 }
-                prop="id"
+                opts={Data?.data.mods?.map((mod) => mod.id) ?? ['']}
               />
             }
           >

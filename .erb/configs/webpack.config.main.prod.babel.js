@@ -18,19 +18,9 @@ const devtoolsConfig = process.env.DEBUG_PROD === 'true' ? {
   devtool: 'source-map'
 } : {};
 
-export default merge(baseConfig, {
-  ...devtoolsConfig,
-
+const base = {
   mode: 'production',
 
-  target: 'electron-main',
-
-  entry: './src/main.dev.ts',
-
-  output: {
-    path: path.join(__dirname, '../../'),
-    filename: './src/main.prod.js',
-  },
 
   optimization: {
     minimizer: [
@@ -38,6 +28,30 @@ export default merge(baseConfig, {
         parallel: true,
       }),
     ]
+  },
+
+/**
+   * Disables webpack processing of __dirname and __filename.
+   * If you run the bundle in node.js it falls back to these values of node.js.
+   * https://github.com/webpack/webpack/issues/2010
+   */
+ node: {
+  __dirname: false,
+  __filename: false,
+},
+
+output: {
+  path: path.join(__dirname, '../../'),
+}
+};
+
+export default [merge(baseConfig, base, devtoolsConfig, {
+  target: 'electron-main',
+
+  entry: './src/main.dev.ts',
+
+  output: {
+    filename: './src/main.prod.js',
   },
 
   plugins: [
@@ -62,14 +76,10 @@ export default merge(baseConfig, {
       START_MINIMIZED: false,
     }),
   ],
-
-  /**
-   * Disables webpack processing of __dirname and __filename.
-   * If you run the bundle in node.js it falls back to these values of node.js.
-   * https://github.com/webpack/webpack/issues/2010
-   */
-  node: {
-    __dirname: false,
-    __filename: false,
-  },
-});
+}), merge(baseConfig, base, {
+  target: 'node',
+  entry: './src/worker.ts',
+  output: {
+    filename: 'src/dist/worker.js'
+  }
+})];

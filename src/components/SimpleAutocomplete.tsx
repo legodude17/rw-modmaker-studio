@@ -7,20 +7,27 @@ function SimpleAutocomplete({
   options,
   path,
   value,
+  textFieldProps,
+  onBlur = () => undefined,
+  transformValue = (arg) => arg,
 }: {
   options: string[];
   path: string[];
   value: string;
+  textFieldProps?: TextFieldProps;
+  transformValue?: (arg: string) => string;
+  onBlur?: (val: string) => void;
 }) {
   const dispatch = useContext(DispatchContext);
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [path.join('.')]);
   useEffect(() => {
-    dispatch({
-      type: 'set',
-      path,
-      newValue: text,
-    });
+    if (text !== value)
+      dispatch({
+        type: 'set',
+        path,
+        newValue: transformValue(text),
+      });
   }, [text]);
 
   return (
@@ -31,14 +38,21 @@ function SimpleAutocomplete({
         <TextField
           // eslint-disable-next-line react/jsx-props-no-spreading
           {...params}
+          // eslint-disable-next-line react/jsx-props-no-spreading
+          {...textFieldProps}
           variant="outlined"
+          onBlur={(event) => {
+            onBlur(text);
+            textFieldProps?.onBlur?.(event);
+          }}
         />
       )}
       inputValue={text}
       onInputChange={(_, newValue) => setText(newValue)}
+      onChange={(_, newValue) => setText(newValue ?? '')}
       freeSolo
       selectOnFocus
-      style={{ flexGrow: 1 }}
+      style={{ flexGrow: 1, width: '100%' }}
       filterOptions={(opts, state) =>
         state.inputValue === value
           ? opts
@@ -49,6 +63,12 @@ function SimpleAutocomplete({
     />
   );
 }
+
+SimpleAutocomplete.defaultProps = {
+  textFieldProps: {},
+  onBlur: () => undefined,
+  transformValue: (arg: string) => arg,
+};
 
 export default memo(
   SimpleAutocomplete,

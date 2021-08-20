@@ -1,67 +1,31 @@
 import { useContext, memo } from 'react';
-import {
-  IconButton,
-  List as ListElement,
-  ListItem,
-  Paper,
-} from '@material-ui/core';
-import { Seq, List } from 'immutable';
-import { Add } from '@material-ui/icons';
-import { Def, makeField } from '../Project';
-import DefFieldDisplay from './DefFieldDisplay';
+import { List as ListElement, ListItem, Paper } from '@material-ui/core';
+import { Def } from '../Project';
 import FieldDisplay from './FieldDisplay';
-import { DataContext, DispatchContext } from '../util';
-import { isSingleInput } from './SingleFieldInput';
+import { DataContext } from '../util';
+import MetaDefFields from './MetaDefFields';
+import FieldsDisplay from './FieldsDisplay';
 
 // eslint-disable-next-line react/require-default-props
 function DefDisplay({ def, defIndex }: { def?: Def; defIndex: number }) {
-  const dispatch = useContext(DispatchContext);
   const Data = useContext(DataContext);
-  if (!def || !Data) return null;
-  const defTypeInfo = Data.typeByName(def.type);
-  let temp;
-  console.log('defTypeInfo:', defTypeInfo?.childNodes);
+  if (!def) return null;
+  const defTypeInfo = Data?.typeByName(def.type);
+  if (!defTypeInfo) return null;
   return (
     <Paper elevation={2}>
       <ListElement>
-        {def.fields.map((field, i) => (
-          <ListItem key={field.key}>
-            <DefFieldDisplay
-              path={['defs', defIndex.toString(), 'fields', i.toString()]}
-              field={field}
-              typePath={`${def.type}!${field.key}`}
-            />
-          </ListItem>
-        ))}
-        {Seq(defTypeInfo?.childNodes ?? {})
-          .filter(
-            (_, key) => !def.fields.filter((field) => field.key === key).size
-          )
-          .map((type, key) => (
-            <ListItem key={key}>
-              <FieldDisplay fieldName={key}>
-                <IconButton
-                  onClick={() =>
-                    dispatch({
-                      type: 'add',
-                      path: ['defs', defIndex.toString(), 'fields'],
-                      newValue: makeField({
-                        key,
-                        type,
-                        value:
-                          (temp = Data.typeByName(type)) && isSingleInput(temp)
-                            ? ''
-                            : List(),
-                      }),
-                    })
-                  }
-                >
-                  <Add />
-                </IconButton>
-              </FieldDisplay>
-            </ListItem>
-          ))
-          .valueSeq()}
+        <ListItem key=".meta">
+          <FieldDisplay fieldName="Meta Info" expandable>
+            <MetaDefFields def={def} path={['defs', defIndex.toString()]} />
+          </FieldDisplay>
+        </ListItem>
+        <FieldsDisplay
+          fields={def.fields}
+          typeInfo={defTypeInfo}
+          path={['defs', defIndex.toString(), 'fields']}
+          typePath={def.type}
+        />
       </ListElement>
     </Paper>
   );

@@ -15,7 +15,7 @@ function PathedCheckbox({
   return (
     <Checkbox
       checked={checked}
-      style={{ flexGrow: 1 }}
+      style={{ flexGrow: 0 }}
       onChange={(event) => {
         dispatch({
           type: 'set',

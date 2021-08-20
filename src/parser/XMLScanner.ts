@@ -2,6 +2,7 @@
  *  Copyright (c) Microsoft Corporation. All rights reserved.
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
+import log from '../log';
 export interface Scanner {
   scan(): TokenType;
   getTokenType(): TokenType;
@@ -261,7 +262,7 @@ export function createScanner(
         (token === TokenType.StartTagClose || token === TokenType.EndTagClose)
       )
     ) {
-      console.log(
+      log.warn(
         `Scanner.scan has not advanced at offset ${offset}, state before: ${oldState} after: ${state}`
       );
       stream.advance(1);

@@ -18,17 +18,23 @@ import {
   Project,
   ProjectProps,
 } from './Project';
-import { allFilesRecusive, getModPaths } from './util';
+import { allFilesRecusive, getModPaths, getName } from './util';
+import { createManager, fullType } from './DataManager';
+import { DataManager, AllData } from './DataManagerType';
 import {
-  createManager,
-  getDefFolders,
-  fullType,
+  getDefInfo,
+  getInstalledMods,
+  getParents,
+  getTypeInfo,
   getAllAssemblies,
   getModFolders,
   getDefFiles,
-} from './DataManager';
-import { DataManager, AllData } from './DataManagerType';
-import { DefInfo, ModInfo, TypeInfo } from './completionItem';
+  getDefFolders,
+} from './dataGetter';
+import { end, init } from './WorkerManager';
+import log from './log';
+
+const idsInUse = new Set<number>();
 
 export function stringifyManifest(manifest: ModManifest): string {
   return xml(
@@ -169,9 +175,15 @@ export function stringifyDefs(defs: Def[]): string {
     [
       {
         Defs: defs.map((def) => ({
-          [def.type
-            .replace('Rimworld.', '')
-            .replace('Verse.', '')]: def.fields.map(fieldToXml),
+          [def.type.replace('Rimworld.', '').replace('Verse.', '')]: def.fields
+            .map(fieldToXml)
+            .concat({
+              _attr: {
+                ...(def.abstract ? { Abstract: 'True' } : {}),
+                ...(def.name ? { Name: def.name } : {}),
+                ...(def.parent ? { ParentName: def.parent } : {}),
+              },
+            }),
         })),
       },
     ],
@@ -181,6 +193,15 @@ export function stringifyDefs(defs: Def[]): string {
       declaration: true,
     }
   );
+}
+
+function genId() {
+  let id;
+  do {
+    id = Math.random() * 10 ** Math.round(Math.random() * 10);
+  } while (idsInUse.has(id));
+  idsInUse.add(id);
+  return id;
 }
 
 function readField(
@@ -213,22 +234,31 @@ function readField(
     return makeField({
       key,
       value,
-      attrs: node.attributes,
+      attrs:
+        node.attributes && Map(node.attributes).map((val) => val ?? undefined),
       type,
+      id: genId(),
     });
+  }
+  if (node.attributes?.Class) {
+    const temp = fullType(node.attributes.Class, failedTypes, Data);
+    if (temp && Data.typeByName(temp)) type = temp;
   }
   return makeField({
     key: node.tag?.content ?? '',
     value: List(
       node.children.map((n) => readField(n, Data, failedTypes, type))
     ),
-    attrs: node.attributes,
+    attrs:
+      node.attributes && Map(node.attributes).map((val) => val ?? undefined),
     type,
+    id: genId(),
   });
 }
 
 export function readDefs(
   text: string,
+  filePath: string,
   Data: DataManager,
   failedTypes?: Set<string>
 ): List<Def> {
@@ -254,34 +284,27 @@ export function readDefs(
             )
           )
         ),
+        file: filePath,
       })
     )
   );
 }
 
-export async function readProject(
-  folder: string,
-  regenerate: {
-    typeInfo: (assems: string[], extraTypes: string[]) => Promise<TypeInfo[]>;
-    defInfo: (
-      defFolders: string[],
-      Data?: DataManager,
-      failedTypes?: Set<string>
-    ) => Promise<DefInfo[]>;
-    modInfo: (modFolders: string[]) => Promise<ModInfo[]>;
-  }
-): Promise<Project> {
-  console.log('Reading project from:', folder);
+export async function readProject(folder: string): Promise<Project> {
+  log.debug('Reading project from:', folder);
   const project: Partial<ProjectProps> = { folder };
   const failedTypes: Set<string> = new Set();
   const data: AllData = {
     types: [],
     defs: [],
-    mods: await regenerate.modInfo(await getModFolders()),
+    mods: await getInstalledMods(await getModFolders()),
     parents: {},
   };
 
   const Data = createManager(data);
+
+  log.debug('Creating workers...');
+  await init();
 
   try {
     project.manifest = readManifest(
@@ -289,36 +312,35 @@ export async function readProject(
       Data
     );
   } catch (e) {
-    console.error(e);
+    log.error(e);
     project.manifest = makeManifest();
   }
 
-  console.log('Read manifest');
+  log.debug('Read manifest');
+
+  const defFiles = await getDefFiles(
+    await getDefFolders(project.manifest.deps.map((mod) => mod.path).toArray())
+  );
+
+  const readDefsInt = ([text, file]: string[]) => readDefs(text, file, Data);
 
   try {
     let lastLength = failedTypes.size;
     do {
       /* eslint-disable no-await-in-loop */
       lastLength = failedTypes.size;
-      console.log('Regenerating types with', lastLength, 'failedTypes');
-      data.types = await regenerate.typeInfo(
+      log.debug('Regenerating types with', lastLength, 'failedTypes');
+      data.types = await getTypeInfo(
         await getAllAssemblies(
           project.manifest.deps.map((mod) => mod.path).toArray(),
           folder
         ),
         [...failedTypes]
       );
-      console.log('Regenerating defs');
-      data.defs = await regenerate.defInfo(
-        await getDefFiles(
-          await getDefFolders(
-            project.manifest.deps.map((mod) => mod.path).toArray()
-          )
-        ),
-        Data,
-        failedTypes
-      );
-      console.log('Reading defs');
+      log.debug('Regenerating defs');
+      data.defs = await getDefInfo(defFiles, Data, failedTypes);
+      Data.clearCache();
+      log.debug('Reading defs');
       project.defs = (
         await Promise.all(
           (
@@ -329,22 +351,75 @@ export async function readProject(
             )
           )
             .reduce((a, b) => a.concat(b), [])
-            .map((file) => fs.readFile(file, 'utf-8'))
+            .map(async (file) => [await fs.readFile(file, 'utf-8'), file])
         )
       )
-        .map((text) => readDefs(text, Data))
+        .map(readDefsInt)
         .reduce((a, b) => a.concat(b), List());
+      log.debug('Reading parents');
+      data.parents = await getParents(defFiles, Data, {}, failedTypes);
       /* eslint-enable */
-      console.log('Now have', failedTypes.size, 'failedTypes');
+      log.debug('Now have', failedTypes.size, 'failedTypes');
     } while (failedTypes.size !== lastLength);
   } catch (e) {
     console.error(e);
     project.defs = List();
   }
 
-  console.log('Finished reading defs');
+  log.debug('Finished reading defs');
 
-  await fs.writeFile(join(folder, '_info.json'), JSON.stringify(Data.data));
+  project.loaded = true;
+
+  await fs.writeFile(join(folder, '_data.json'), JSON.stringify(Data.data));
+
+  await end();
 
   return makeProject(project);
+}
+
+async function createIfMissing(folder: string) {
+  try {
+    await fs.access(folder);
+  } catch (e) {
+    log.warn(`Missing folder, creating ${folder}`);
+    await fs.mkdir(folder);
+  }
+}
+
+export async function writeProject(project: Project) {
+  log.debug('Saving to', project.folder);
+
+  createIfMissing(project.folder);
+
+  createIfMissing(path.join(project.folder, 'About'));
+
+  const manifestPath = path.join(project.folder, 'About', 'About.xml');
+
+  log.debug('Saving manifest to', manifestPath);
+
+  await fs.writeFile(manifestPath, stringifyManifest(project.manifest));
+
+  log.debug('Saved manifest');
+
+  const defsByFile: {
+    [key: string]: Def[];
+  } = {};
+
+  createIfMissing(path.join(project.folder, 'Defs'));
+
+  project.defs.forEach((def) => {
+    const file = def.file.replaceAll(path.posix.sep, path.win32.sep);
+    log.debug('Found', getName(def), 'at', file);
+    if (defsByFile[file]) defsByFile[file].push(def);
+    else defsByFile[file] = [def];
+  });
+
+  await Promise.all(
+    Object.entries(defsByFile).map(([file, defs]) => {
+      log.debug('Saving', defs.map(getName).join(', '), 'to', file);
+      return fs.writeFile(file, stringifyDefs(defs));
+    })
+  );
+
+  log.debug('Saved defs');
 }

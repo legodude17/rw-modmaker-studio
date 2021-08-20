@@ -225,6 +225,13 @@ export default class MenuBuilder {
               this.mainWindow.webContents.send('new-project');
             },
           },
+          {
+            label: '&Save',
+            accelerator: 'Ctrl+S',
+            click: () => {
+              this.mainWindow.webContents.send('save');
+            },
+          },
         ],
       },
       {
