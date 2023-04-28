@@ -13,23 +13,15 @@ import FieldDisplay from './FieldDisplay';
 import SingleFieldInput from './SingleFieldInput';
 import { DataContext, DispatchContext, isSingleInput } from '../util';
 import AddInnerField from './AddInnerField';
+// No way to avoid a cycle here, since these two components recusivly including each other is how it can display deeply nested props easily
 // eslint-disable-next-line import/no-cycle
 import FieldsDisplay from './FieldsDisplay';
 import Add from './Add';
 import SimpleAutocomplete from './SimpleAutocomplete';
 import { fullType } from '../DataManager';
 import log from '../log';
-// No way to avoid a cycle here, since these two components recusivly including each other is how it can display deeply nested props easily
 
-function DefFieldDisplay({
-  path,
-  field,
-  typePath,
-}: {
-  path: string[];
-  field: Field;
-  typePath: string;
-}) {
+function DefFieldDisplay({ path, field }: { path: string[]; field: Field }) {
   const Data = useContext(DataContext);
   const dispatch = useContext(DispatchContext);
   if (!Data) return null;
@@ -39,12 +31,7 @@ function DefFieldDisplay({
     return (
       <FieldDisplay fieldName={field.key}>
         <div style={{ width: '50%', display: 'flex', flexDirection: 'row' }}>
-          <SingleFieldInput
-            field={field}
-            path={path}
-            typeInfo={typeInfo}
-            typePath={typePath}
-          />
+          <SingleFieldInput field={field} path={path} typeInfo={typeInfo} />
           <IconButton
             onClick={() =>
               dispatch({
@@ -74,7 +61,6 @@ function DefFieldDisplay({
           fieldName={field.key}
           actions={
             <AddInnerField
-              typePath={`${typePath}!li`}
               typeInfo={innerTypeInfo}
               add={(value) =>
                 dispatch({
@@ -118,7 +104,6 @@ function DefFieldDisplay({
                 field={innerField}
                 path={path.concat(['value', index.toString()])}
                 typeInfo={innerTypeInfo}
-                typePath={`${typePath}!${innerField.key}`}
               />
               <IconButton
                 onClick={() =>
@@ -152,7 +137,6 @@ function DefFieldDisplay({
           fieldName={field.key}
           actions={
             <AddInnerField
-              typePath=""
               typeInfo={keyTypeInfo}
               add={(value) =>
                 dispatch({
@@ -197,7 +181,6 @@ function DefFieldDisplay({
                 type="key"
                 path={path.concat(['value', index.toString()])}
                 typeInfo={keyTypeInfo}
-                typePath={`${typePath}!${innerField.key}`}
               />
               <Divider
                 orientation="vertical"
@@ -208,7 +191,6 @@ function DefFieldDisplay({
                 field={innerField}
                 path={path.concat(['value', index.toString()])}
                 typeInfo={valueTypeInfo}
-                typePath={`${typePath}!${innerField.key}`}
               />
               <IconButton
                 onClick={() =>
@@ -278,7 +260,6 @@ function DefFieldDisplay({
                   fields={innerField.value as List<Field>}
                   typeInfo={Data.typeByName(innerField.type) ?? innerTypeInfo}
                   path={path.concat('value', index.toString(), 'value')}
-                  typePath={`${typePath}!${innerField.key}`}
                 >
                   <ListItem key=".Class">
                     <FieldDisplay fieldName="Class">
@@ -375,7 +356,6 @@ function DefFieldDisplay({
               fields={innerField.value as List<Field>}
               typeInfo={innerTypeInfo}
               path={path.concat('value', index.toString(), 'value')}
-              typePath={`${typePath}!${innerField.key}`}
             />
           </Paper>
         ))}
@@ -405,7 +385,6 @@ function DefFieldDisplay({
       >
         <ListElement>
           <FieldsDisplay
-            typePath={typePath}
             typeInfo={typeInfo}
             path={path.concat('value')}
             fields={field.value as List<Field>}
@@ -433,7 +412,6 @@ export default memo(
   DefFieldDisplay,
   (prevState, nextState) =>
     prevState.path.join('.') === nextState.path.join('.') &&
-    prevState.typePath === nextState.typePath &&
     (prevState.field?.equals?.(nextState.field) ??
       prevState.field === nextState.field)
 );

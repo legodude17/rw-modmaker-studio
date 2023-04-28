@@ -46,10 +46,15 @@ function TextModal({
     }
 
     (async () => {
-      const response = await autocomplete();
+      try {
+        const response = await autocomplete();
 
-      if (active) {
-        setOptions(response);
+        if (active) {
+          setOptions(response);
+        }
+      } catch (e: any) {
+        console.error(e);
+        setOptions([]);
       }
     })();
 

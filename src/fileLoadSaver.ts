@@ -24,15 +24,15 @@ import { DataManager, AllData } from './DataManagerType';
 import {
   getDefInfo,
   getInstalledMods,
-  getParents,
   getTypeInfo,
   getAllAssemblies,
   getModFolders,
   getDefFiles,
   getDefFolders,
+  getDocs,
 } from './dataGetter';
-import { end, init } from './WorkerManager';
 import log from './log';
+import { settings } from './electron';
 
 const idsInUse = new Set<number>();
 
@@ -298,13 +298,9 @@ export async function readProject(folder: string): Promise<Project> {
     types: [],
     defs: [],
     mods: await getInstalledMods(await getModFolders()),
-    parents: {},
   };
 
   const Data = createManager(data);
-
-  log.debug('Creating workers...');
-  await init();
 
   try {
     project.manifest = readManifest(
@@ -357,22 +353,31 @@ export async function readProject(folder: string): Promise<Project> {
         .map(readDefsInt)
         .reduce((a, b) => a.concat(b), List());
       log.debug('Reading parents');
-      data.parents = await getParents(defFiles, Data, {}, failedTypes);
       /* eslint-enable */
       log.debug('Now have', failedTypes.size, 'failedTypes');
     } while (failedTypes.size !== lastLength);
   } catch (e) {
-    console.error(e);
+    log.error(e);
     project.defs = List();
   }
 
   log.debug('Finished reading defs');
 
+  const docs = await getDocs(await settings.get('docspath'));
+
+  log.debug('Read documentation files');
+
+  Object.keys(docs).forEach((key) => {
+    const defType = Data.typeByName(key);
+    if (!defType) return;
+    defType.docs = docs[key];
+  });
+
+  log.debug('Added documentation');
+
   project.loaded = true;
 
   await fs.writeFile(join(folder, '_data.json'), JSON.stringify(Data.data));
-
-  await end();
 
   return makeProject(project);
 }

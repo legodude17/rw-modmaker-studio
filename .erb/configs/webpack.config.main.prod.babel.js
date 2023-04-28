@@ -76,10 +76,4 @@ export default [merge(baseConfig, base, devtoolsConfig, {
       START_MINIMIZED: false,
     }),
   ],
-}), merge(baseConfig, base, {
-  target: 'node',
-  entry: './src/worker.ts',
-  output: {
-    filename: 'src/dist/worker.js'
-  }
 })];

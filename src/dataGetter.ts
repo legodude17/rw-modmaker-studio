@@ -1,15 +1,13 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import execa from 'execa';
-import { Seq } from 'immutable';
-import { DefInfo, ModInfo, TypeInfo } from './completionItem';
+import { Doc } from 'prettier';
+import { DefInfo, Documentation, ModInfo, TypeInfo } from './completionItem';
 import { DataManager } from './DataManagerType';
 import { app, settings } from './electron';
 import { parse } from './parser/XMLParser';
 import { fullType } from './DataManager';
-import { doTasks } from './WorkerManager';
 import { allFilesRecusive, getModPaths } from './util';
-import log from './log';
 
 export async function getTypeInfo(assems: string[], extraTypes: string[]) {
   const extractor = (await settings.get('extractorpath')) as string;
@@ -33,7 +31,7 @@ export async function getTypeInfo(assems: string[], extraTypes: string[]) {
         extraTypes.join(' '),
       ])
     );
-  } catch (e) {
+  } catch (e: any) {
     if (e.exitCode === 1) {
       throw new Error(
         (await fs.readFile(logPath, 'utf-8'))
@@ -43,6 +41,29 @@ export async function getTypeInfo(assems: string[], extraTypes: string[]) {
     }
   }
   return JSON.parse(await fs.readFile(output, 'utf-8')) as TypeInfo[];
+}
+
+export async function getDocs(docsPath: string) {
+  const docs: { [key: string]: Documentation } = {};
+  const docsFolders = await fs.readdir(docsPath);
+  const docsFiles = (
+    await Promise.all(
+      docsFolders.map((p) => fs.readdir(path.join(docsPath, p)))
+    )
+  )
+    .map((arr, i) =>
+      arr.map((p) => [
+        `${docsFolders[i]}.${p}`,
+        path.join(docsPath, docsFolders[i], p),
+      ])
+    )
+    .flat(1);
+  await Promise.all(
+    docsFiles.map(async ([key, p]) => {
+      docs[key] = JSON.parse(await fs.readFile(p, 'utf-8')) as Documentation;
+    })
+  );
+  return docs;
 }
 
 export async function getDefInfo(
@@ -116,94 +137,18 @@ export async function getInstalledMods(modFolders: string[]) {
             path.join(modPath, 'About', 'PublishedFileId.txt'),
             'utf-8'
           );
-        } catch (e) {
+        } catch (e: any) {
           if (e.code !== 'ENOENT') throw e;
           mod.wshopId = undefined;
         }
         mods.push(mod as ModInfo);
-      } catch (e) {
+      } catch (e: any) {
         if (e.code === 'ENOENT') return;
         throw e;
       }
     })
   );
   return mods;
-}
-
-export async function getParents(
-  files: string[],
-  Data: DataManager,
-  parents: {
-    [key: string]: string;
-  },
-  failedTypes?: Set<string>
-) {
-  const uses: { [key: string]: Set<string> } = {};
-
-  const results = await doTasks(
-    (
-      await Promise.all(files.map((f) => fs.readFile(f, 'utf-8')))
-    ).map((text) => ({
-      type: 'uses',
-      data: Data.data,
-      text,
-      id: 0,
-    }))
-  );
-
-  log.debug(`Found ${results.length} results`);
-
-  results.forEach((result) => {
-    Object.entries(result.uses).forEach(([key, val]) => {
-      uses[key] = new Set([...(uses[key] ?? []), ...val]);
-    });
-    result.failedTypes.forEach((ft) => failedTypes?.add(ft));
-  });
-
-  log.debug('Found uses');
-
-  await fs.writeFile(
-    path.join(__dirname, 'uses.json'),
-    JSON.stringify(
-      Object.fromEntries(
-        Object.entries(uses).map(([key, value]) => [key, [...value]])
-      )
-    )
-  );
-
-  Object.entries(uses).forEach(([keyPath, values]) => {
-    const allParents = Seq(values)
-      .map((val) => Data.typeByName(val))
-      .filter((v) => v)
-      .map((t) => [t].concat(Data.allParents(t as TypeInfo)))
-      .filter((v) => v && v.every((t) => t))
-      .toArray() as TypeInfo[][];
-    const parent = allParents[0]?.find((v) =>
-      allParents.every((arr) => arr.includes(v))
-    );
-
-    if (!parent) {
-      log.warn(
-        `Failed to find common parent for ${keyPath}:`,
-        allParents,
-        values
-      );
-      return;
-    }
-
-    log.debug(`Found common parent for ${keyPath} : ${parent}`);
-    parents[keyPath] = parent.typeIdentifier;
-  });
-
-  Object.entries(parents).forEach(([key, type]) => {
-    const typeInfo = Data.typeByName(type);
-    log.debug(`Failing type ${type}`);
-    if (!typeInfo) failedTypes?.add(type);
-  });
-
-  // console.log('Parents:', parents);
-
-  return parents;
 }
 
 export const getAllAssemblies = async (

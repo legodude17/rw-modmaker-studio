@@ -28,7 +28,6 @@ import {
   getDefInfo,
   getInstalledMods,
   getModFolders,
-  getParents,
   getTypeInfo,
 } from './dataGetter';
 
@@ -177,7 +176,6 @@ ipcMain.handle(
       types: [],
       defs: [],
       mods: await getInstalledMods(await getModFolders()),
-      parents: {},
     };
     const Data = createManager(data);
 
@@ -200,7 +198,6 @@ ipcMain.handle(
         [...failedTypes]
       );
       data.defs = await getDefInfo(defFiles, Data, failedTypes);
-      data.parents = await getParents(defFiles, Data, {}, failedTypes);
       /* eslint-enable */
     } while (failedTypes.size !== lastLength);
 

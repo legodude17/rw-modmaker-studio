@@ -8,11 +8,9 @@ import { makeField, ProjectAction } from '../Project';
 
 export default function AddInnerField({
   add,
-  typePath,
   typeInfo,
 }: {
   add: (value: string) => void;
-  typePath: string;
   typeInfo: TypeInfo;
 }) {
   const [text, setText] = React.useState('');
@@ -22,7 +20,6 @@ export default function AddInnerField({
     <>
       <DispatchContext.Provider value={dispatch}>
         <SingleFieldInput
-          typePath={typePath}
           typeInfo={typeInfo}
           path={[(!!text).toString()]}
           field={makeField({ value: text })}

@@ -14,13 +14,11 @@ function SingleFieldInput({
   path,
   typeInfo,
   type = 'value',
-  typePath,
 }: {
   field: Field;
   path: string[];
   typeInfo: TypeInfo;
   type?: 'value' | 'key';
-  typePath: string;
 }) {
   const Data = useContext(DataContext);
   const { defs } = useContext(DefsContext);
@@ -115,10 +113,11 @@ function SingleFieldInput({
   }
   if (!Data) return null;
   if (typeInfo.typeIdentifier === 'System.Type') {
-    const parentTypeName = Data.data.parents[typePath];
+    const parentTypeName = typeInfo.docs.typeParent;
     const parentTypeInfo = Data.typeByName(parentTypeName);
-    if (!parentTypeInfo) return null;
-    const opts = Data.allChildren(parentTypeInfo)?.map((t) =>
+    const opts = (
+      parentTypeInfo ? Data.allChildren(parentTypeInfo) : Data.data.types
+    )?.map((t) =>
       t.typeIdentifier.replace('RimWorld.', '').replace('Verse.', '')
     );
     return (

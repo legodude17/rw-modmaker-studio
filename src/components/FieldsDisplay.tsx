@@ -14,13 +14,11 @@ function FieldsDisplay({
   fields,
   typeInfo,
   path,
-  typePath,
   children,
 }: {
   fields: List<Field>;
   typeInfo: TypeInfo;
   path: string[];
-  typePath: string;
   children?: ReactNode;
 }) {
   const dispatch = useContext(DispatchContext);
@@ -33,11 +31,7 @@ function FieldsDisplay({
       {fields.map((field, i) =>
         field.key === 'defName' ? null : (
           <ListItem key={field.id}>
-            <DefFieldDisplay
-              path={path.concat(i.toString())}
-              field={field}
-              typePath={`${typePath}!${field.key}`}
-            />
+            <DefFieldDisplay path={path.concat(i.toString())} field={field} />
           </ListItem>
         )
       )}

@@ -40,6 +40,7 @@ export function createManager(
   }
 
   function typeByName(type: string) {
+    if (!type) return undefined;
     return cache.typesByName[type]
       ? cache.typesByName[type]
       : (cache.typesByName[type] = data.types.find(

@@ -15,7 +15,16 @@ export interface TypeInfo {
   childNodes: {
     [key: string]: string;
   };
+
+  docs: Documentation;
 }
+
+export type Documentation = {
+  description: string;
+  usage: string;
+  example: string;
+  typeParent: string;
+};
 
 export interface DefInfo {
   defName: string;

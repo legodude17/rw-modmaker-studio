@@ -17,7 +17,4 @@ export type AllData = {
   types: TypeInfo[];
   defs: DefInfo[];
   mods: ModInfo[];
-  parents: {
-    [key: string]: string;
-  };
 };

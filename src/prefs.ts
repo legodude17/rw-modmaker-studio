@@ -50,6 +50,12 @@ export const prefs = [
     fromBase: (base: string) =>
       path.resolve(base, '../../workshop/content/294100'),
   },
+  {
+    name: 'docspath',
+    desc: 'Path to Docs folder',
+    type: 'string',
+    fromBase: (base: string) => '',
+  },
 ];
 
 export const defaultPrefs: { [key: string]: string } = {
@@ -64,4 +70,5 @@ export const defaultPrefs: { [key: string]: string } = {
   extractorpath:
     'C:/Users/legod/Code/extractor/extractor/bin/Debug/extractor.exe',
   rwdata: 'C:/Program Files (x86)/Steam/steamapps/common/RimWorld/Data',
+  docspath: 'C:\\Users\\legod\\Code\\rwdocs',
 };
